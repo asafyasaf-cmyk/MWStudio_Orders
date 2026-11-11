@@ -116,9 +116,9 @@ Part types ("template"):
 - profile: a standard steel section cut to length, with optional holes and notches. Fill "profile": family (shs square tube, rhs rectangular tube, chs round tube, angle equal L-angle, flat flat bar, round round bar, upn U channel, ipe / hea / heb beams), size = an id from the catalog list in the message (pick the closest real size), length = one piece in mm, ops = holes and notches.
 - plate (W length, H width, r corner radius, hn holes, hd hole diameter, off hole centre to edge, center central hole diameter), disc (D, Di inner hole, hn holes on bolt circle, hd, pcd), angle (bent sheet L: A, B, L, hn, hd), channel (bent sheet U: W, H, L, hn, hd), zed (a, h, c, L, hn, hd), tray (L, W, H, hn, hd). For these put the numbers in "params" as {k, v} pairs and set "profile" to null. For "profile" leave "params" empty.
 
-Operations on a profile (every field is required; fill the ones that do not apply with these defaults: c 0, d 9, n 1, s 100, thru true, shape "rect", wdt 20, ang 90, depth 10):
+Operations on a profile (every field is required; fill the ones that do not apply with these defaults: c 0, d 9, n 1, s 100, thru true, shape "rect", wdt 20, span 0, ang 90, depth 10):
 - hole: x = distance in mm from the start of the piece to the first hole centre; face = top | bottom | front | back (holes seen in a top view are "top", holes seen in a side / front view are "front"); c = offset across the face from its centre line; d = diameter; n holes spaced s apart along the length; thru = drilled through both walls / the whole section.
-- notch, shape "rect": a rectangular cut from the face, x = where the notch starts, wdt = its length along the piece, depth = how deep it goes in.
+- notch, shape "rect": a rectangular cut from the face, x = where the notch starts, wdt = its length along the piece, span = its width across the face (0 = the whole face), c = offset of that width from the face centre line, depth = how deep it goes in.
 - notch, shape "v": a V cut for bending the profile, x = centre of the V, ang = opening angle (90 for a right-angle bend), depth usually the section height minus one wall thickness.
 
 Reading sketches: the left end of the main view is the start of the piece (x = 0). Turn chained dimensions into positions measured from the start. Numbers are millimetres unless the sketch says cm or m. "Ø" or "קוטר" means diameter; a bolt Mx needs a hole of x+1 mm. If a dimension is unreadable or missing, use the most plausible value, say in the reply what you assumed, and ask one question about the most important missing value. Never invent holes or notches that are not drawn or described.
@@ -130,10 +130,10 @@ Every message starts with the part currently on screen. When the customer descri
 "suggestions": 2-3 Hebrew quick replies of 1-3 words each.`;
 
 const OP_SCHEMA = { type: 'object', additionalProperties: false,
-  required: ['kind', 'face', 'x', 'c', 'd', 'n', 's', 'thru', 'shape', 'wdt', 'ang', 'depth'],
+  required: ['kind', 'face', 'x', 'c', 'd', 'n', 's', 'thru', 'shape', 'wdt', 'span', 'ang', 'depth'],
   properties: { kind: { type: 'string', enum: ['hole', 'notch'] }, face: { type: 'string', enum: ['top', 'bottom', 'front', 'back'] },
     x: { type: 'number' }, c: { type: 'number' }, d: { type: 'number' }, n: { type: 'integer' }, s: { type: 'number' }, thru: { type: 'boolean' },
-    shape: { type: 'string', enum: ['rect', 'v'] }, wdt: { type: 'number' }, ang: { type: 'number' }, depth: { type: 'number' } } };
+    shape: { type: 'string', enum: ['rect', 'v'] }, wdt: { type: 'number' }, span: { type: 'number' }, ang: { type: 'number' }, depth: { type: 'number' } } };
 const DESIGN_SCHEMA = { type: 'object', additionalProperties: false,
   required: ['template', 'params', 'profile', 'material', 'thickness', 'qty', 'ral'],
   properties: {
