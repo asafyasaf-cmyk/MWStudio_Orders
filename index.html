@@ -156,6 +156,8 @@ table.price tr.tot td{border-bottom:0;padding-top:10px;font:700 20px var(--f-dis
 table.price tr.tot td:last-child{font:500 22px var(--f-mono);color:var(--accent)}
 .done{background:var(--surface-2);border:1px solid var(--ok);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .done h3{margin:0;color:var(--ok);font:700 15px var(--f-display)}
+.btn.wa{text-align:center;text-decoration:none;background:#25D366;border-color:#25D366;color:#06210F}
+input[aria-invalid="true"]{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
 .done pre{margin:0;white-space:pre-wrap;font:13px/1.55 var(--f-body);max-height:260px;overflow:auto}
 .tb:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.ral-chip:focus-visible,.seg button:focus-visible,.tile:focus-visible,.qr:focus-visible,.play:focus-visible,details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -307,7 +309,8 @@ h1{font-size:22px}
           <button class="btn primary" type="submit">שליחה</button>
           <div class="done" id="done" hidden>
             <pre id="orderText"></pre>
-            <button class="btn" type="button" id="copy">העתקה לוואטסאפ</button>
+            <a class="btn primary wa" id="waSend" href="#" target="_blank" rel="noopener">שליחה בוואטסאפ</a>
+            <button class="btn" type="button" id="copy">העתקת הטקסט</button>
           </div>
         </form>
       </section>
@@ -325,6 +328,9 @@ const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- pricing config ---------- */
 // Price (₪) per part = cut_mm × 0.02 + pierces × 3 + gross_kg × rate + bends + paint; rounded up per unit
+/* ---------- shop config ---------- */
+// WhatsApp number of the shop, international format without + or leading 0 (e.g. 972501234567). Empty = customer picks a chat.
+const SHOP_WHATSAPP='';
 const PRICE={cutPerMm:0.02,perPierce:3,perKg:{steel:9,galv:12,ss:30,al:32},perBend:6,paintPerM2:70};
 const DENSITY={steel:0.00000785,galv:0.00000785,ss:0.00000793,al:0.0000027}; // kg/mm³
 const MAT_NAME={steel:'ברזל שחור',galv:'מגולוון',ss:'נירוסטה',al:'אלומיניום'};
@@ -1062,13 +1068,18 @@ function shapeLine(){
 }
 $('orderBtn').addEventListener('click',()=>{$('orderForm').hidden=false;$('orderBtn').hidden=true;$('cName').focus();});
 $('orderForm').addEventListener('submit',e=>{e.preventDefault();
+  const miss=[['cName',v=>v.trim().length>1],['cPhone',v=>v.replace(/\D/g,'').length>=9]].find(([id,ok])=>!ok($(id).value));
+  ['cName','cPhone'].forEach(id=>$(id).removeAttribute('aria-invalid'));
+  if(miss){$(miss[0]).setAttribute('aria-invalid','true');$(miss[0]).focus();return;}
   const r=ralInfo();
   const txt=['הזמנה חדשה',`שם: ${$('cName').value}`,`טלפון: ${$('cPhone').value}`,
    S.desc?`בקשת הלקוח: ${S.desc}`:'',shapeLine(),
    `חומר: ${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,`פריסה: ${fmt(S.data.W)} × ${fmt(S.data.H)} מ״מ`,`כמות: ${S.qty}`,
    `צבע: ${S.paint&&r?`RAL ${r.k} ${r.name}, ${$('finish').selectedOptions[0].text}`:'ללא'}`,
    `מחיר ליחידה: ${money(S.unit)}`,`סה״כ: ${money(S.total)} לפני מע״מ`,$('cNote').value?`הערות: ${$('cNote').value}`:''].filter(Boolean).join('\n');
-  $('orderText').textContent=txt;$('done').hidden=false;});
+  $('orderText').textContent=txt;
+  $('waSend').href=`https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(txt)}`;
+  $('done').hidden=false;});
 $('copy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText($('orderText').textContent);b.textContent='הועתק';}catch(_){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('orderText'));s.removeAllRanges();s.addRange(rg);b.textContent='הטקסט מסומן, העתיקו ידנית';}});
 
 /* ---------- start ---------- */
