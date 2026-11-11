@@ -170,6 +170,8 @@ input[aria-invalid="true"]{border-color:var(--warn);box-shadow:0 0 0 1px var(--w
 .secsvg{flex:none;width:110px;height:110px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px}
 .secsvg path{fill:var(--muted);fill-rule:evenodd;stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke}
 .facts bdi{unicode-bidi:isolate}
+.saved{font-weight:700;font-size:14px;color:var(--ok)}
+.saved.bad{color:var(--warn)}
 .done pre{margin:0;white-space:pre-wrap;font:13px/1.55 var(--f-body);max-height:260px;overflow:auto}
 .tb:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.ral-chip:focus-visible,.seg button:focus-visible,.tile:focus-visible,.qr:focus-visible,.play:focus-visible,details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -329,8 +331,10 @@ h1{font-size:22px}
             <input id="cPhone" class="num" type="tel" autocomplete="tel" placeholder="טלפון" aria-label="טלפון">
           </div>
           <input id="cNote" type="text" placeholder="הערות" aria-label="הערות">
-          <button class="btn primary" type="submit">שליחה</button>
+          <input id="cWeb" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
+          <button class="btn primary" type="submit" id="submitBtn">שליחה</button>
           <div class="done" id="done" hidden>
+            <div class="saved" id="savedLine" role="status" hidden></div>
             <pre id="orderText"></pre>
             <a class="btn primary wa" id="waSend" href="#" target="_blank" rel="noopener">שליחה בוואטסאפ</a>
             <button class="btn" type="button" id="copy">העתקת הטקסט</button>
@@ -354,6 +358,8 @@ const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* ---------- shop config ---------- */
 // WhatsApp number of the shop, international format without + or leading 0 (e.g. 972501234567). Empty = customer picks a chat.
 const SHOP_WHATSAPP='';
+// Google Sheets web-app URL that stores orders (see google-sheets/README.md). Empty = orders are not saved, WhatsApp only.
+const ORDERS_ENDPOINT='';
 const PRICE={cutPerMm:0.02,perPierce:3,perKg:{steel:9,galv:12,ss:30,al:32},perBend:6,paintPerM2:70};
 // Profiles (cut to length): material price per kg + one saw cut per piece; paint per m² of outer surface
 PRICE.prof={perKg:{steel:7,galv:9.5,ss:28,al:30},perCut:4,kerf:3};
@@ -1258,19 +1264,34 @@ function shapeLine(){
   return `צורה: ${T.name}. `+T.fields.filter(f=>!f.show||f.show(S.params)).map(f=>`${f.l} ${fmt(S.params[f.k])}`).join(', ');
 }
 $('orderBtn').addEventListener('click',()=>{$('orderForm').hidden=false;$('orderBtn').hidden=true;$('cName').focus();});
-$('orderForm').addEventListener('submit',e=>{e.preventDefault();
+$('orderForm').addEventListener('submit',async e=>{e.preventDefault();if(saving)return;
   const miss=[['cName',v=>v.trim().length>1],['cPhone',v=>v.replace(/\D/g,'').length>=9]].find(([id,ok])=>!ok($(id).value));
   ['cName','cPhone'].forEach(id=>$(id).removeAttribute('aria-invalid'));
   if(miss){$(miss[0]).setAttribute('aria-invalid','true');$(miss[0]).focus();return;}
-  const r=ralInfo();
-  const txt=['הזמנה חדשה',`שם: ${$('cName').value}`,`טלפון: ${$('cPhone').value}`,
-   S.desc?`בקשת הלקוח: ${S.desc}`:'',shapeLine(),
+  const r=ralInfo(),color=S.paint&&r?`RAL ${r.k} ${r.name}, ${$('finish').selectedOptions[0].text}`:'ללא';
+  const body=[S.desc?`בקשת הלקוח: ${S.desc}`:'',shapeLine(),
    ...(S.mode==='prof'?[`חומר: ${MAT_NAME[S.mat]}`,`משקל: ${profNow().kg.toFixed(2)} ק״ג ליח׳`]:[`חומר: ${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,`פריסה: ${fmt(S.data.W)} × ${fmt(S.data.H)} מ״מ`]),`כמות: ${S.qty}`,
-   `צבע: ${S.paint&&r?`RAL ${r.k} ${r.name}, ${$('finish').selectedOptions[0].text}`:'ללא'}`,
-   `מחיר ליחידה: ${money(S.unit)}`,`סה״כ: ${money(S.total)} לפני מע״מ`,$('cNote').value?`הערות: ${$('cNote').value}`:''].filter(Boolean).join('\n');
+   `צבע: ${color}`,`מחיר ליחידה: ${money(S.unit)}`,`סה״כ: ${money(S.total)} לפני מע״מ`,$('cNote').value?`הערות: ${$('cNote').value}`:''].filter(Boolean).join('\n');
+  const sig=[$('cName').value,$('cPhone').value,body].join('|');
+  if(!lastOrder||lastOrder.sig!==sig)lastOrder={sig,id:newOrderId(),saved:null};
+  const id=lastOrder.id;
+  const txt=[`הזמנה חדשה ${id}`,`שם: ${$('cName').value}`,`טלפון: ${$('cPhone').value}`,body].join('\n');
   $('orderText').textContent=txt;
   $('waSend').href=`https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(txt)}`;
-  $('done').hidden=false;});
+  $('done').hidden=false;
+  if(!ORDERS_ENDPOINT||lastOrder.saved)return;
+  const line=$('savedLine');line.hidden=false;line.classList.remove('bad');line.textContent='שומר את ההזמנה…';
+  saving=true;$('submitBtn').disabled=true;
+  try{
+    const res=await fetch(ORDERS_ENDPOINT,{method:'POST',body:JSON.stringify({id,name:$('cName').value.trim(),phone:$('cPhone').value.trim(),note:$('cNote').value.trim(),desc:S.desc||'',
+      product:shapeLine(),material:S.mode==='prof'?MAT_NAME[S.mat]:`${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,qty:S.qty,color,unit:S.unit,total:S.total,text:txt,website:$('cWeb').value})});
+    const j=await res.json();if(!j||!j.ok)throw new Error(j&&j.error||'save failed');
+    lastOrder.saved=true;line.textContent=`ההזמנה נשמרה · מספר ${id}`;
+  }catch(_){line.classList.add('bad');line.textContent='ההזמנה לא נשמרה. שלחו אותה בוואטסאפ או נסו שוב.';}
+  finally{saving=false;$('submitBtn').disabled=false;}
+});
+let saving=false,lastOrder=null;
+function newOrderId(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `MW-${String(d.getFullYear()).slice(2)}${p(d.getMonth()+1)}${p(d.getDate())}-${String(Math.floor(1000+Math.random()*9000))}`;}
 $('copy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText($('orderText').textContent);b.textContent='הועתק';}catch(_){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('orderText'));s.removeAllRanges();s.addRange(rg);b.textContent='הטקסט מסומן, העתיקו ידנית';}});
 
 /* ---------- start ---------- */
