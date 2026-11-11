@@ -1,29 +1,90 @@
-<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>הזמנת חיתוך וכיפוף</title><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>הזמנת חיתוך וכיפוף</title><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+/* ---------- MW Studio: steel and laser ---------- */
+body{background-color:var(--bg);background-image:radial-gradient(1100px 520px at 88% -8%,rgb(255 122 26 / .09),transparent 62%),linear-gradient(180deg,var(--steel-lo) 0,var(--bg) 640px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{padding-block:0 40px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;margin:0;padding-block:12px;align-items:center;background:rgb(10 14 18 / .86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:500 14px var(--f-body);letter-spacing:.22em;direction:ltr}
+.brand b{font-weight:700;color:var(--muted)}
+.mark{fill:currentColor;display:block}
+.brand .mark{width:28px;height:30px}
+.modetabs{background:var(--surface)}
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.6fr);gap:22px 44px;align-items:center;padding-block:40px 30px}
+.hero-text{min-width:0}
+.eyebrow{margin:0 0 12px;font:600 14px var(--f-body);color:var(--accent);letter-spacing:.06em}
+.hero h1{font:700 clamp(58px,9.4vw,118px)/.86 var(--f-hero);letter-spacing:.005em;margin:0;text-wrap:balance}
+.hero h1 span{background:linear-gradient(90deg,#C9D4DC,#6F808D);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:54ch;color:var(--muted);font-size:17px;line-height:1.6;margin:16px 0 24px}
+.ways{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.way{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:start;padding:16px 16px 14px;border-radius:12px;border:1px solid var(--line);background:linear-gradient(160deg,var(--steel-hi),var(--surface) 58%);color:var(--ink);font-family:var(--f-body);cursor:pointer;transition:border-color .2s,transform .2s,box-shadow .2s}
+.way svg{width:46px;height:34px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;margin-bottom:8px}
+.way b{font:700 19px var(--f-display)}
+.way small{font-size:13px;color:var(--muted);line-height:1.4}
+.way:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 14px 32px -14px var(--glow)}
+.way:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.hero-mark{position:relative;justify-self:center;width:min(100%,290px);padding:8%}
+.hero-mark svg{display:block;width:100%;height:auto}
+.hero-mark::before{content:"";position:absolute;inset:10%;border-radius:50%;background:radial-gradient(closest-side,rgb(255 122 26 / .16),transparent);filter:blur(20px);z-index:-1}
+.beam{position:absolute;inset-inline:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent) 30%,#FFD2A8 50%,var(--accent) 70%,transparent);box-shadow:0 0 14px 2px var(--glow);opacity:0;animation:scan 2.2s .3s cubic-bezier(.5,0,.3,1) 1 both}
+@keyframes scan{0%{top:6%;opacity:0}12%{opacity:1}85%{opacity:1}100%{top:94%;opacity:0}}
+.specs-strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:6px 0 0;border-block:1px solid var(--line)}
+.specs-strip div{padding:12px 16px;min-width:0}
+.specs-strip div+div{border-inline-start:1px solid var(--line)}
+.specs-strip dt{font-size:12.5px;color:var(--muted)}
+.specs-strip dd{margin:2px 0 0;font:500 15px var(--f-mono);unicode-bidi:plaintext;text-align:start;font-variant-numeric:tabular-nums}
+@media (max-width:940px){header.top{position:static;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media (max-width:860px){.hero{grid-template-columns:1fr;padding-block:22px 22px}.hero-mark{order:-1;justify-self:start;width:110px;padding:0}.ways{grid-template-columns:1fr}
+  .way{display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center}.way svg{grid-row:span 2;margin:0}.specs-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.specs-strip div:nth-child(3){border-inline-start:0}.specs-strip div:nth-child(n+3){border-top:1px solid var(--line)}}
+/* bench */
+.layout{margin-top:8px;scroll-margin-top:84px}
+#step4{scroll-margin-top:84px}
+@media (min-width:941px){.stage{top:84px}}
+.block{position:relative;background:linear-gradient(180deg,var(--surface-2),var(--surface) 160px);border:1px solid var(--line);border-radius:14px;gap:12px}
+.block::before{content:"";position:absolute;inset:0 12px auto;height:1px;background:linear-gradient(90deg,transparent,rgb(255 255 255 / .09),transparent)}
+.stepno{margin:0;display:flex;align-items:center;gap:9px;font:600 13px var(--f-body);color:var(--muted);letter-spacing:.03em}
+.stepno i{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--accent);color:var(--accent-ink);font:700 12.5px var(--f-mono);box-shadow:0 0 18px -4px var(--glow)}
+#viewer{border-radius:16px;box-shadow:0 40px 70px -40px rgb(0 0 0 / .9),inset 0 1px 0 rgb(255 255 255 / .04)}
+.tb{background:rgb(17 23 29 / .82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+input,select,textarea{background:var(--bg);border-color:var(--line)}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.btn.primary{box-shadow:0 10px 26px -12px var(--glow)}
+.total span{text-shadow:0 0 24px rgb(255 122 26 / .25)}
+.tile{background:var(--bg)}
+.foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:32px;padding-block:22px 0;border-top:1px solid var(--line);font-size:14px}
+.foot .mark{width:22px;height:24px;color:var(--muted)}
+.foot .muted{color:var(--muted);font-size:13px;margin-inline-start:auto}
+/* phone: price always in reach */
+.mbar{display:none}
+@media (max-width:940px){
+  .mbar{display:flex;position:fixed;inset:auto 0 0;z-index:20;align-items:center;justify-content:space-between;gap:12px;
+    padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+    background:rgb(10 14 18 / .94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);transition:transform .25s}
+  .mbar.away{transform:translateY(110%)}
+  .mbar small{display:block;font-size:12px;color:var(--muted)}
+  .mbar span{font:500 22px var(--f-mono);color:var(--accent);direction:ltr;font-variant-numeric:tabular-nums}
+  .wrap{padding-block-end:96px}
+}
+@media (prefers-reduced-motion:reduce){.beam{display:none}.way{transition:none}.mbar{transition:none}}
+</style></head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karantina:wght@700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: workshop bench — big 3D viewer on one side, an assistant + numbered order steps in a narrow panel beside it */
+/* Layout: dark workshop — opening plate with the MW mark and three ways in; below it the bench: 3D viewer beside four numbered order steps */
+/* One deliberate dark look (steel and laser), set explicitly so it reads the same on any host theme */
 :root{
-  --bg:#EBEFF2; --surface:#FFFFFF; --surface-2:#F4F6F8; --ink:#141C24; --muted:#5A6874; --line:#D2D9DF;
-  --accent:#E06A12; --accent-ink:#1A0E04; --accent-soft:#FBE7D6;
-  --viewer-bg:#DCE2E7; --grid-a:#B9C3CB; --grid-b:#CBD3D9; --dim:#C2410C; --edge:#2A333B; --bend:#0B66C3;
-  --ok:#1F7A4D; --warn:#A15C00; --paper:#FFFFFF; --pen:#1B2530; --ref:#7A8794;
-  --f-display:"Rubik","Assistant",system-ui,sans-serif;
-  --f-body:"Assistant",system-ui,"Segoe UI",Arial,sans-serif;
+  --bg:#0A0E12; --surface:#11171D; --surface-2:#18212A; --ink:#E9EEF2; --muted:#8D9BA7; --line:#24303B;
+  --steel-hi:#2B3846; --steel-lo:#0E141A;
+  --accent:#FF7A1A; --accent-ink:#1C0C02; --accent-soft:#3A2412; --glow:rgb(255 122 26 / .35);
+  --viewer-bg:#0C1217; --grid-a:#26323D; --grid-b:#161E26; --dim:#FFA45C; --edge:#04070A; --bend:#5AA9F5;
+  --ok:#4FD18B; --warn:#F2B04C; --paper:#FFFFFF; --pen:#1B2530; --ref:#8FA0AE;
+  --f-hero:"Karantina","IBM Plex Sans Hebrew",Impact,sans-serif;
+  --f-display:"IBM Plex Sans Hebrew",system-ui,"Segoe UI",Arial,sans-serif;
+  --f-body:"IBM Plex Sans Hebrew",system-ui,"Segoe UI",Arial,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --r:10px;
+  --r:12px; color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0E1419; --surface:#151D25; --surface-2:#1A242E; --ink:#E4EAEF; --muted:#93A2AE; --line:#263340;
-  --accent:#F28A30; --accent-ink:#1A0E04; --accent-soft:#3A2614;
-  --viewer-bg:#0A0F14; --grid-a:#2A3743; --grid-b:#1B252F; --dim:#F7A35C; --edge:#0B1015; --bend:#5AA9F5;
-  --ok:#5BC98F; --warn:#E8A84A; --paper:#FFFFFF; --pen:#1B2530; --ref:#8FA0AE; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0E1419; --surface:#151D25; --surface-2:#1A242E; --ink:#E4EAEF; --muted:#93A2AE; --line:#263340;
-  --accent:#F28A30; --accent-ink:#1A0E04; --accent-soft:#3A2614;
-  --viewer-bg:#0A0F14; --grid-a:#2A3743; --grid-b:#1B252F; --dim:#F7A35C; --edge:#0B1015; --bend:#5AA9F5;
-  --ok:#5BC98F; --warn:#E8A84A; --paper:#FFFFFF; --pen:#1B2530; --ref:#8FA0AE; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
 .wrap{max-width:1300px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
@@ -238,13 +299,37 @@ h1{font-size:22px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 </style>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="mw" viewBox="0 0 251.5 265.0"><path fill-rule="evenodd" d="M248.9 262.5L247.6 261.9L245.9 260.8L244.1 259.8L242.1 258.7L240.1 257.6L239.2 257.1L238.3 256.6L235.1 254.8L231.9 253L231.5 252.7L231.1 252.5L228.9 251.2L226.6 249.9L225.6 249.4L224.6 248.8L222.2 247.5L219.9 246.1L218.5 245.3L217.1 244.6L214.5 243.1L211.9 241.6L206.9 238.8L201.9 236L201.5 235.7L201.1 235.5L198.1 233.8L195 232L194.9 232L194.8 232L193.4 231.1L192 230.3L190.9 230L189.7 229.7L189.2 229.5L188.6 229.2L187.2 228L185.9 226.8L182.9 225.1L179.9 223.5L178.4 222.6L176.9 221.7L175 220.7L173.1 219.7L172.8 219.4L172.4 219.1L171.2 218.4L170.1 217.8L168.4 216.9L166.6 215.9L161.6 213L156.6 210.2L153.8 208.6L150.9 207L150.5 206.7L150.1 206.5L147 204.7L143.9 203L143.5 202.7L143.1 202.5L140 200.7L136.9 199L136.5 198.7L136.1 198.5L133.1 196.8L130 195L129.9 195L129.8 195L128.2 194L126.7 193L125.8 193L124.9 193L123.3 193.9L121.6 194.8L119.8 195.9L118 197L117.9 197L117.7 197L115.3 198.4L112.9 199.9L111.5 200.6L110.1 201.3L107.9 202.7L105.7 204L105.6 204L105.5 204L102.4 205.8L99.4 207.5L99 207.8L98.6 208L94.8 210.2L90.9 212.3L88.5 213.6L86.1 214.9L84.9 215.7L83.6 216.5L82 217.4L80.3 218.2L78.3 219.4L76.4 220.6L75.2 221.2L74.1 221.8L72.5 222.7L70.9 223.6L69.8 224.3L68.8 225L68.6 225L68.5 225L65.3 226.8L62.2 228.6L61.3 229.1L60.4 229.6L59 230.4L57.6 231.1L56.5 231.8L55.4 232.5L55 232.5L54.6 232.5L54.4 232.1L54.2 231.7L54.3 162.7L54.3 93.6L54.5 93.2L54.7 92.9L57.1 94.1L59.4 95.3L59.7 95.6L60 95.8L63.4 97.7L66.9 99.7L70.8 101.8L74.6 104L75 104.3L75.4 104.5L78.5 106.3L81.6 108L82 108.3L82.4 108.5L85.4 110.2L88.5 112L88.7 112L89 112L89.6 112.8L90.2 113.5L90.3 140.9L90.3 168.2L90.4 168.6L90.6 169L91.3 169L92 169L94.2 167.8L96.4 166.7L98.6 165.3L100.8 164L100.9 164L101 164L104.8 161.8L108.6 159.7L110.2 158.8L111.9 157.9L114.2 156.5L116.6 155.2L117.6 154.6L118.6 154.1L121 152.7L123.3 151.4L124.3 150.8L125.3 150.2L125.8 150.2L126.2 150.2L127.3 150.8L128.4 151.4L130 152.4L131.6 153.4L133.5 154.4L135.4 155.4L138.4 157.2L141.5 159L141.6 159L141.7 159L143.1 159.8L144.4 160.7L146.9 162.1L149.4 163.4L151 164.4L152.6 165.3L154.2 166.2L155.9 167.1L157 167.7L158.1 168.4L161.4 170.2L164.6 172L165 172.3L165.4 172.5L168.4 174.2L171.5 176L171.6 176L171.7 176L173.9 177.3L176.1 178.7L177.8 179.6L179.4 180.5L182.4 182.2L185.4 183.9L186.1 184.3L186.9 184.7L190.4 186.7L193.9 188.7L197.8 190.8L201.6 193L202 193.3L202.4 193.5L205.4 195.2L208.5 197L208.6 197L208.7 197L210.1 197.9L211.5 198.8L212.1 199L212.7 199.2L213.1 199L213.5 198.7L214.1 197.7L214.6 196.6L214.8 109L214.9 21.4L215.3 20.7L215.7 20.1L217.9 18.8L220.1 17.4L221.5 16.7L222.9 15.9L225.5 14.4L228.1 12.8L230.1 11.6L232.1 10.4L233.5 9.7L234.9 9L236 8.3L237.1 7.6L239.6 6.1L242.1 4.7L243.4 3.8L244.7 3L244.9 3L245 3L247.6 1.5L250.2 -0L250.6 -0L251 -0L251.2 0.5L251.5 1L251.5 131.5L251.5 262L251.2 262.6L251 263.2L250.6 263.2L250.1 263.2L248.9 262.5ZM1.4 262.6L1.2 262.4L1.2 259.8L1.2 257.1L0.8 255.9L0.4 254.6L0.2 213.2L-0 171.9L0.1 86.3L0.2 0.7L0.5 0.4L0.8 0.1L1.6 0.6L2.4 1.1L4.9 2.5L7.5 4L7.6 4L7.7 4L9.1 4.8L10.4 5.7L12.9 7.1L15.4 8.4L18.1 10L20.9 11.5L22.6 12.5L24.4 13.4L26 14.4L27.6 15.4L29.5 16.4L31.4 17.4L34.4 19.2L37.5 21L37.6 21L37.7 21L39.1 21.8L40.4 22.7L42.6 23.9L44.9 25.1L45.8 25.6L46.6 26.2L50.1 28.1L53.5 30L53.6 30L53.8 30L54.5 30.5L55.2 31L57.8 32.5L60.5 34L60.6 34L60.7 34L62.9 35.4L65.2 36.7L66.9 37.6L68.6 38.5L69.8 39.2L70.9 39.9L72.9 41L74.9 42.1L76 42.7L77.1 43.4L80.3 45.2L83.5 47L83.6 47L83.7 47L85.9 48.3L88.1 49.7L89.8 50.5L91.4 51.4L93.3 52.6L95.3 53.8L97 54.6L98.6 55.5L100.2 56.5L101.9 57.4L107.7 60.7L113.5 64L113.6 64L113.7 64L115.9 65.3L118.1 66.7L119.8 67.6L121.4 68.4L122.9 69.3L124.4 70.2L124.9 70.4L125.5 70.5L127 69.7L128.6 68.9L130.2 68L131.8 67L131.9 67L132 67L135.2 65.2L138.3 63.4L139.2 62.9L140.1 62.4L143.4 60.5L146.6 58.7L147.4 58.3L148.1 57.9L151.1 56.2L154.1 54.5L155.9 53.5L157.6 52.5L160.2 51.1L162.9 49.6L164.1 48.9L165.4 48.2L167 47.3L168.6 46.4L169.7 45.7L170.7 45L170.8 45L171 45L174.8 42.9L178.6 40.7L179.4 40.3L180.1 39.9L183.1 38.2L186.1 36.5L187.5 35.7L188.9 34.9L191.6 33.4L194.4 31.9L195 31.5L195.6 31.1L196.2 30.9L196.7 30.7L197.1 31.1L197.5 31.5L197.5 100.3L197.5 169L197.2 169.5L197 170L196.3 170L195.7 170L195 169.5L194.4 169.1L191.1 167.3L187.9 165.6L186 164.6L184.1 163.6L181 161.8L177.9 160.1L175.5 158.8L173.1 157.6L170 155.8L166.9 154.1L164.3 152.8L161.8 151.4L161.5 150.8L161.2 150.2L161.2 122.5L161.3 94.8L161.1 94.4L160.9 94L160.5 94L160.1 94L159.2 94.5L158.4 95.1L157.1 95.7L155.9 96.4L153.1 97.9L150.4 99.3L149.4 100L148.4 100.6L146 101.8L143.6 103.1L140.5 104.8L137.4 106.6L136.1 107.2L134.9 107.9L132.6 109.1L130.4 110.3L129.4 110.9L128.5 111.5L127.1 112.3L125.7 113L125.3 113L124.8 113L122.9 111.9L120.9 110.7L116 108L111.1 105.2L109.6 104.4L108.1 103.6L105.5 102.1L102.9 100.6L101.1 99.6L99.3 98.6L96.7 97.1L94.1 95.6L93 95L91.8 94.4L89.4 93L86.9 91.6L85.1 90.6L83.3 89.6L80.2 87.8L77 86L76.9 86L76.8 86L74.6 84.7L72.4 83.3L69.9 82L67.4 80.7L65.6 79.6L63.8 78.6L62.2 77.7L60.6 76.8L58.2 75.5L55.9 74.1L54.2 73.2L52.6 72.3L50.1 70.9L47.7 69.5L45.9 68.5L44.1 67.5L41.1 65.8L38 64L37.3 63.8L36.7 63.7L36.5 64L36.3 64.4L36.3 153.9L36.2 243.4L35.8 243.8L35.4 244.2L33.4 245.4L31.4 246.6L28.8 248L26.1 249.3L23.9 250.7L21.7 252L21.6 252L21.5 252L17.6 254.2L13.6 256.4L12.8 256.9L11.9 257.4L8.3 259.4L4.7 261.4L3.6 262.1L2.4 262.7L2 262.7L1.6 262.8L1.4 262.6Z"/></symbol></svg>
 <div class="wrap" dir="rtl" lang="he">
-  <header class="top"><h1>MW Studio</h1>
+  <header class="top"><a class="brand" href="#top" aria-label="MW Studio"><svg class="mark" viewBox="0 0 251.5 265.0" aria-hidden="true"><use href="#mw"/></svg><span>MW <b>STUDIO</b></span></a>
     <nav class="modetabs" role="tablist" aria-label="סוג הזמנה">
       <button type="button" role="tab" id="tabSheet" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 L12 21 L21 17 L21 13 L12 17 L3 13 Z M3 13 L12 9 L21 13"/></svg>פח – חיתוך וכיפוף</button>
       <button type="button" role="tab" id="tabProf" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3 H19 V6 H14 V18 H19 V21 H5 V18 H10 V6 H5 Z"/></svg>קטלוג פרופילים</button>
     </nav>
   </header>
+
+  <section class="hero" id="top" aria-labelledby="heroTitle">
+    <div class="hero-text">
+      <p class="eyebrow">חיתוך לייזר · כיפוף · פרופילים</p>
+      <h1 id="heroTitle">מתכת לפי מידה.<br><span>מהשרטוט ועד המכונה.</span></h1>
+      <p class="lede">בוחרים צורה או מצלמים שרטוט, רואים את החלק בתלת־ממד ומקבלים מחיר מיד. כל הזמנת פרופיל יוצאת עם קובץ STEP מוכן ללייזר.</p>
+      <div class="ways">
+        <button type="button" class="way" id="waySheet"><svg viewBox="0 0 48 36" aria-hidden="true"><path d="M6 14 L24 6 L42 14 V24 L24 32 L6 24 Z"/><path d="M6 14 L24 22 L42 14 M24 22 V32"/></svg><b>פח</b><small>חיתוך וכיפוף לפי מידה</small></button>
+        <button type="button" class="way" id="wayProf"><svg viewBox="0 0 48 36" aria-hidden="true"><path d="M12 5 H36 V10 H27 V26 H36 V31 H12 V26 H21 V10 H12 Z"/></svg><b>פרופילים</b><small>צינורות, זוויתנים וקורות עם חורים וחירוצים</small></button>
+        <button type="button" class="way" id="wayDraw"><svg viewBox="0 0 48 36" aria-hidden="true"><path d="M8 28 L10 21 L28 5 L34 11 L16 27 Z M25 8 L31 14"/><path d="M30 30 H42" stroke-dasharray="3 3"/></svg><b id="wayDrawT">שרטוט ביד</b><small id="wayDrawS">מצלמים שרטוט והמערכת בונה את החלק</small></button>
+      </div>
+    </div>
+    <div class="hero-mark" aria-hidden="true">
+      <svg viewBox="0 0 251.5 265.0"><defs><linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox"><stop offset="0" stop-color="#E9EEF2"/><stop offset=".42" stop-color="#E9EEF2"/><stop offset=".5" stop-color="#FF7A1A"/><stop offset=".58" stop-color="#E9EEF2"/><stop offset="1" stop-color="#E9EEF2"/><animateTransform id="sweepAnim" attributeName="gradientTransform" type="translate" from="-1 0" to="1 0" dur="1.8s" begin="0.4s" fill="freeze"/></linearGradient></defs><use href="#mw" fill="url(#sweep)"/></svg>
+      <span class="beam"></span>
+    </div>
+    <dl class="specs-strip">
+      <div><dt>גיליון</dt><dd>עד 3000×1500 מ״מ</dd></div>
+      <div><dt>עובי פח</dt><dd>1–12 מ״מ</dd></div>
+      <div><dt>פרופילים</dt><dd>EN 10219 · EN 10365</dd></div>
+      <div><dt>קבצים</dt><dd>DXF · STEP</dd></div>
+    </dl>
+  </section>
 
   <div class="layout">
     <section class="stage" aria-label="תצוגת תלת-ממד">
@@ -273,7 +358,8 @@ h1{font-size:22px}
     </section>
 
     <aside class="panel">
-      <section class="block">
+      <section class="block" id="step1">
+        <p class="stepno"><i>1</i>צורה</p>
         <div class="chat" id="chat" aria-live="polite"></div>
         <div class="quick" id="quick"></div>
         <div class="sketch" id="sketch" hidden>
@@ -296,7 +382,8 @@ h1{font-size:22px}
         <input type="file" id="file" accept=".dxf" hidden><span id="fname" hidden></span>
       </section>
 
-      <section class="block">
+      <section class="block" id="step2">
+        <p class="stepno"><i>2</i>מידות ועיבודים</p>
         <h2 id="paramsTitle">מידות</h2>
         <div id="paramsTpl"><div class="pgrid" id="pgrid"></div></div>
         <div id="paramsDxf" hidden>
@@ -331,7 +418,8 @@ h1{font-size:22px}
         </details>
       </section>
 
-      <section class="block">
+      <section class="block" id="step3">
+        <p class="stepno"><i>3</i>חומר, כמות וצבע</p>
         <div class="row3">
           <label class="f">חומר
             <select id="mat"><option value="steel">ברזל</option><option value="galv">מגולוון</option><option value="ss">נירוסטה</option><option value="al">אלומיניום</option></select>
@@ -358,7 +446,8 @@ h1{font-size:22px}
         <datalist id="ralList"></datalist>
       </section>
 
-      <section class="block pricebox">
+      <section class="block pricebox" id="step4">
+        <p class="stepno"><i>4</i>מחיר והזמנה</p>
         <div class="total"><span id="totCell">₪0</span><small id="unitLine"></small></div>
         <details class="pdet"><summary>פירוט</summary><table class="price"><tbody id="priceBody"></tbody></table></details>
         <button class="btn primary big" type="button" id="orderBtn">הזמנה</button>
@@ -380,7 +469,9 @@ h1{font-size:22px}
       </section>
     </aside>
   </div>
+  <footer class="foot"><svg class="mark" viewBox="0 0 251.5 265.0" aria-hidden="true"><use href="#mw"/></svg><span>MW Studio · חיתוך לייזר, כיפוף ופרופילים</span><span class="muted">המחירים לפני מע״מ. מחיר סופי לאחר אישור השרטוט.</span></footer>
 </div>
+<div class="mbar" id="mbar"><div><small>סה״כ להזמנה</small><span id="mTotal">₪0</span></div><button type="button" class="btn primary" id="mOrder">להזמנה</button></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -1305,6 +1396,7 @@ function updateProfile(){
     ['קידוח',nh?`${nh} × ₪${PRICE.prof.perHole}`:'ללא',holes],['חירוץ',nn?`${nn} × ₪${PRICE.prof.perNotch}`:'ללא',notches],['צבע',S.paint&&r?`RAL ${r.k} · ${m2.toFixed(2)} מ״ר`:'ללא',paint]],unit,total);
 }
 function showPrice(rows,unit,total){
+  const mt=$('mTotal');if(mt)mt.textContent=money(total);
   $('priceBody').innerHTML=rows.map(([a,b,v])=>`<tr><td>${a}<span class="det">${b}</span></td><td>${money(Math.round(v*100)/100)}</td></tr>`).join('')+
     ''; $('unitLine').textContent=`${money(unit)} ליח׳ × ${S.qty}`; caption();
   S.unit=unit;S.total=total;
@@ -1374,6 +1466,14 @@ $('profL').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!i
 $('profL').addEventListener('change',e=>{S.prof.L=Math.min(12000,Math.max(20,parseFloat(e.target.value)||1000));e.target.value=S.prof.L;const r=$('profLr');if(+r.max<S.prof.L)r.max=S.prof.L;r.value=S.prof.L;regen(false);});
 
 let lastSheetPreset='angle';
+const toBench=()=>document.querySelector('.layout').scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'start'});
+$('waySheet').addEventListener('click',()=>{if(S.mode==='prof')choosePreset(lastSheetPreset);toBench();});
+$('wayProf').addEventListener('click',()=>{if(S.mode!=='prof')openProfile();toBench();});
+$('wayDraw').addEventListener('click',()=>{toBench();if(canImages)$('photo').click();else setTimeout(()=>$('msg').focus({preventScroll:true}),REDUCED?0:450);});
+function syncWayDraw(){$('wayDrawT').textContent=canImages?'שרטוט ביד':'תיאור במילים';$('wayDrawS').textContent=canImages?'מצלמים שרטוט והמערכת בונה את החלק':'כותבים מה צריך, למשל מדף לקיר 60 ס״מ, והמערכת בונה אותו';}
+$('mOrder').addEventListener('click',()=>{$('step4').scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'center'});if($('orderForm').hidden)$('orderBtn').click();});
+if('IntersectionObserver' in window)new IntersectionObserver(es=>es.forEach(e=>$('mbar').classList.toggle('away',e.isIntersecting))).observe($('step4'));
+if(REDUCED){const a=document.getElementById('sweepAnim');if(a)a.remove();}
 $('tabProf').addEventListener('click',()=>{if(S.mode!=='prof')openProfile();});
 $('tabSheet').addEventListener('click',()=>{if(S.mode==='prof')choosePreset(lastSheetPreset);});
 
@@ -1446,7 +1546,7 @@ if(ORDERS_ENDPOINT&&!(window.claude&&window.claude.use)){remoteAI=true;canImages
   try{sampleFn=await claude.use('sample');}catch(_){sampleFn=null;}
   if(!sampleFn)return;
   const lim=await sampleFn.limits().catch(()=>null);
-  if(lim&&lim.images){canImages=true;$('photoBtn').hidden=false;$('sketchBtn').hidden=false;$('photo').accept=lim.images.mediaTypes.join(',');}
+  if(lim&&lim.images){canImages=true;syncWayDraw();$('photoBtn').hidden=false;$('sketchBtn').hidden=false;$('photo').accept=lim.images.mediaTypes.join(',');}
 })();
 function bubble(role,text,img,built){
   const m=document.createElement('div');m.className='msg '+(role==='me'?'me':'bot');
@@ -1624,7 +1724,7 @@ function newOrderId(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `
 $('copy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText($('orderText').textContent);b.textContent='הועתק';}catch(_){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('orderText'));s.removeAllRanges();s.addRange(rg);b.textContent='הטקסט מסומן, העתיקו ידנית';}});
 
 /* ---------- start ---------- */
-resize();updateRal();S.preset='angle';markPreset('angle');S.mode='';setTemplate('angle',PRESETS.find(p=>p.id==='angle').p,true);
+syncWayDraw();resize();updateRal();S.preset='angle';markPreset('angle');S.mode='';setTemplate('angle',PRESETS.find(p=>p.id==='angle').p,true);
 </script>
 
 </body></html>
