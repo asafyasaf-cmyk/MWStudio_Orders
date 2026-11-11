@@ -176,6 +176,22 @@ input[aria-invalid="true"]{border-color:var(--warn);box-shadow:0 0 0 1px var(--w
 .modetabs button:not([aria-selected="true"]):hover{color:var(--ink);background:var(--surface-2)}
 .modetabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:520px){.modetabs{width:100%}.modetabs button{flex:1;justify-content:center;padding:9px 6px;font-size:14px}}
+.tb.tool{border-color:var(--accent)}
+#viewer.placing canvas{cursor:crosshair}
+.placehint{position:absolute;top:50px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);font:600 13px var(--f-body);padding:6px 12px;border-radius:99px;white-space:nowrap;pointer-events:none}
+.dim-label.op{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);border-radius:99px;font-weight:700;min-width:22px;text-align:center}
+.opsbox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.opsbar{display:flex;align-items:center;gap:8px}.opsbar b{flex:1;font:700 14px var(--f-display)}
+#opsList{display:flex;flex-direction:column;gap:8px}
+.op{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px}
+.ophead{display:flex;align-items:center;gap:8px}.ophead b{font-size:14px}
+.ophead select{width:auto;flex:1;min-width:0;padding:4px 6px;font-size:14px}
+.opnum{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font:700 12px var(--f-mono)}
+.opdel{border:0;background:none;color:var(--muted);font:700 20px var(--f-body);cursor:pointer;padding:0 4px;line-height:1}
+.opdel:hover{color:var(--warn)}
+.opgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 8px;align-items:end}
+.opgrid label.f{font-size:12px}.opgrid input{padding:5px 7px;font-size:15px}
+.toggle.small{font-size:13px;grid-column:1/-1}.toggle.small input{width:16px;height:16px}
 .facts bdi{unicode-bidi:isolate}
 .saved{font-weight:700;font-size:14px;color:var(--ok)}
 .saved.bad{color:var(--warn)}
@@ -237,7 +253,10 @@ h1{font-size:22px}
           <button class="tb" id="dimToggle" aria-pressed="true">מידות</button>
           <button class="tb" id="refToggle" aria-pressed="false">השוואת גודל</button>
           <button class="tb" data-view="iso" aria-pressed="false" aria-label="איפוס תצוגה">⟲</button>
+          <button class="tb tool" id="toolHole" aria-pressed="false" hidden>⊕ חור</button>
+          <button class="tb tool" id="toolNotch" aria-pressed="false" hidden>⊕ חירוץ</button>
         </div>
+        <div class="placehint" id="placeHint" role="status" hidden></div>
         <div class="legend" id="legend" hidden><i></i>קו כיפוף</div>
         <div class="filebadge" id="fileBadge"></div>
         <div class="foldbar" id="foldbar" hidden>
@@ -293,6 +312,10 @@ h1{font-size:22px}
           <div class="fld">
             <div class="top"><label for="profL">אורך חתיכה (מ״מ)</label></div>
             <div class="ctl"><input type="range" id="profLr" min="20" max="6000" step="10" value="1000" aria-label="אורך חתיכה"><input id="profL" class="num" type="number" inputmode="decimal" min="20" max="12000" step="any" value="1000"></div>
+          </div>
+          <div class="opsbox">
+            <div class="opsbar"><b>עיבודים</b><button type="button" class="btn small" id="opAddHole">+ חור</button><button type="button" class="btn small" id="opAddNotch">+ חירוץ</button></div>
+            <div id="opsList"></div>
           </div>
           <div class="profinfo"><svg class="secsvg" id="secSvg" role="img" aria-label="חתך הפרופיל"></svg><dl class="profspec" id="profSpec"></dl></div>
         </div>
@@ -374,7 +397,7 @@ const SHOP_WHATSAPP='';
 const ORDERS_ENDPOINT='';
 const PRICE={cutPerMm:0.02,perPierce:3,perKg:{steel:9,galv:12,ss:30,al:32},perBend:6,paintPerM2:70};
 // Profiles (cut to length): material price per kg + one saw cut per piece; paint per m² of outer surface
-PRICE.prof={perKg:{steel:7,galv:9.5,ss:28,al:30},perCut:4,kerf:3};
+PRICE.prof={perKg:{steel:7,galv:9.5,ss:28,al:30},perCut:4,kerf:3,perHole:3,perNotch:10};
 const DENSITY={steel:0.00000785,galv:0.00000785,ss:0.00000793,al:0.0000027}; // kg/mm³
 const MAT_NAME={steel:'ברזל שחור',galv:'מגולוון',ss:'נירוסטה',al:'אלומיניום'};
 const RAW={steel:{c:'#5F666C',m:.35,r:.55},galv:{c:'#A7AFB3',m:.45,r:.4},ss:{c:'#C4C9CC',m:.55,r:.28},al:{c:'#CDD2D6',m:.4,r:.38}};
@@ -735,6 +758,7 @@ async function openProfile(p){
   if(f&&f.id!==S.prof.fam){S.prof.fam=f.id;S.prof.size=f.def;}
   if(p.size!=null&&profNow().f.sizes.some(x=>x.id===String(p.size)))S.prof.size=String(p.size);
   const L=Number(p.length);if(isFinite(L)&&L>0)S.prof.L=Math.min(12000,Math.max(20,Math.round(L)));
+  if(Array.isArray(p.ops))S.prof.ops=cleanOps(p.ops);
   S.preset='prof';markPreset('prof');setMode('prof');renderProfForm();regen(true);
 }
 function renderProfForm(){
@@ -742,18 +766,20 @@ function renderProfForm(){
   $('famChips').innerHTML=CATALOG.map(x=>`<button type="button" class="fam" data-fam="${x.id}" aria-pressed="${x.id===f.id}">${x.name}</button>`).join('');
   $('profSize').innerHTML=f.sizes.map(z=>`<option value="${z.id}">${z.label}</option>`).join('');$('profSize').value=S.prof.size;
   $('profL').value=S.prof.L;$('profLr').max=Math.max(6000,S.prof.L);$('profLr').value=S.prof.L;
+  renderOps();
 }
-function regenProfile(fit){
+function regenProfile(fit,keep){
   $('err').hidden=true;
   const P=profNow(),w=[];S.profSec=P.sec;
   if(S.prof.L>P.stock)w.push(`ארוך ממוט סטנדרטי (${P.stock/1000} מ׳). נדרש חיבור בריתוך.`);
+  w.push(...opWarnings(P.sec,S.prof.L));
   if(S.mat==='ss'||S.mat==='al')w.push('מידות לפי טבלאות פלדה. בנירוסטה ובאלומיניום הזמינות והמשקל משתנים, נאשר מול הספק.');
   S.warns=w;$('warns').innerHTML='';w.forEach(x=>{const d=document.createElement('div');d.textContent=x;$('warns').appendChild(d);});
   $('okLine').hidden=true;$('bendInfo').textContent='';$('foldbar').hidden=true;$('fileBadge').textContent='';
   $('profSpec').innerHTML=[['תקן',P.f.std],...P.f.dims.map(([k,l])=>[l,fmt(P.z.d[k])+' מ״מ']),['משקל למטר',P.kgm.toFixed(2)+' ק״ג'],['מוט במלאי',P.stock/1000+' מ׳'],
     ['חתיכות ממוט',P.per?String(P.per):'—'],['מוטות להזמנה',P.bars?String(P.bars):'—']].map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
   drawSection(P.sec);
-  build();if(fit)setView('iso');else setView(lastView);
+  build();if(fit)setView('iso');else if(!keep)setView(lastView);
   update();
 }
 function drawSection(sec){
@@ -765,7 +791,11 @@ function buildProfileMesh(part){
   const sec=S.profSec,sh=new THREE.Shape(sec.outer.map(q=>new THREE.Vector2(q.x,q.y)));
   sec.holes.forEach(h=>sh.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q.x,q.y)))));
   const g=new THREE.ExtrudeGeometry(sh,{depth:S.prof.L,bevelEnabled:false,curveSegments:1});
-  g.rotateY(Math.PI/2);g.computeVertexNormals();addMesh(part,g);
+  g.rotateY(Math.PI/2);g.computeVertexNormals();
+  const cutters=opCutters(sec,S.prof.L);
+  if(!cutters.length){addMesh(part,g);return;}
+  let geo=g;try{geo=cutProfile(g,cutters);}catch(e){console.warn('cut failed',e);addMesh(part,g);return;}
+  part.add(new THREE.Mesh(geo,mat));part.add(new THREE.LineSegments(featureEdges(geo,25),edgeMat));
 }
 // offline fallback: "צינור 40x40x3 באורך 1.2 מטר", "IPE 200 אורך 3 מטר", "זוויתן 50x5"
 function profileParse(raw){
@@ -813,7 +843,7 @@ function clearScene(){group.clear();dimLabels.forEach(l=>l.el.remove());dimLabel
 function sceneKind(){const bent=!!(S.geom&&S.geom.faces);if(!bent)return'flat';return S.fold>=1?'folded':S.fold<=0?'flat':'hinge';}
 function build(){
   clearScene();
-  if(S.mode==='prof'){if(!S.profSec)return;const part=new THREE.Group();partObj=part;S.scene='prof';buildProfileMesh(part);finishScene(part,'prof');return;}
+  if(S.mode==='prof'){if(!S.profSec)return;const part=new THREE.Group();partObj=part;S.scene='prof';buildProfileMesh(part);finishScene(part,'prof');addOpLabels();return;}
   if(!S.data)return;
   const kind=sceneKind();S.scene=kind;
   const part=new THREE.Group();partObj=part;
@@ -931,6 +961,176 @@ const v3=new THREE.Vector3();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>build());
 new MutationObserver(()=>build()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 
+/* ---------- CSG (BSP boolean subtract; after Evan Wallace's csg.js, MIT) ---------- */
+const CSG=(()=>{
+  const EPS=1e-5;
+  class V{constructor(x,y,z){this.x=x;this.y=y;this.z=z;}clone(){return new V(this.x,this.y,this.z);}neg(){return new V(-this.x,-this.y,-this.z);}
+    plus(a){return new V(this.x+a.x,this.y+a.y,this.z+a.z);}minus(a){return new V(this.x-a.x,this.y-a.y,this.z-a.z);}times(k){return new V(this.x*k,this.y*k,this.z*k);}
+    dot(a){return this.x*a.x+this.y*a.y+this.z*a.z;}lerp(a,t){return this.plus(a.minus(this).times(t));}len(){return Math.sqrt(this.dot(this));}unit(){return this.times(1/this.len());}
+    cross(a){return new V(this.y*a.z-this.z*a.y,this.z*a.x-this.x*a.z,this.x*a.y-this.y*a.x);}}
+  class Plane{constructor(n,w){this.n=n;this.w=w;}clone(){return new Plane(this.n.clone(),this.w);}flip(){this.n=this.n.neg();this.w=-this.w;}
+    static from(a,b,c){const n=b.minus(a).cross(c.minus(a)).unit();return new Plane(n,n.dot(a));}
+    split(p,cf,cb,f,b){const C=0,F=1,B=2,SP=3;let pt=0;const ty=[];
+      for(const v of p.vs){const t=this.n.dot(v)-this.w,k=t<-EPS?B:t>EPS?F:C;pt|=k;ty.push(k);}
+      if(pt===C)(this.n.dot(p.plane.n)>0?cf:cb).push(p);else if(pt===F)f.push(p);else if(pt===B)b.push(p);
+      else{const fs=[],bs=[],n=p.vs.length;for(let i=0;i<n;i++){const j=(i+1)%n,ti=ty[i],tj=ty[j],vi=p.vs[i],vj=p.vs[j];
+          if(ti!==B)fs.push(vi);if(ti!==F)bs.push(vi);
+          if((ti|tj)===SP){const t=(this.w-this.n.dot(vi))/this.n.dot(vj.minus(vi)),v=vi.lerp(vj,t);fs.push(v);bs.push(v);}}
+        if(fs.length>=3)f.push(new Poly(fs,p.plane));if(bs.length>=3)b.push(new Poly(bs,p.plane));}}}
+  class Poly{constructor(vs,plane){this.vs=vs;this.plane=plane?plane.clone():Plane.from(vs[0],vs[1],vs[2]);}flip(){this.vs.reverse();this.plane.flip();}}
+  class Node{constructor(ps){this.plane=null;this.front=null;this.back=null;this.ps=[];if(ps)this.build(ps);}
+    invert(){for(const p of this.ps)p.flip();if(this.plane)this.plane.flip();if(this.front)this.front.invert();if(this.back)this.back.invert();const t=this.front;this.front=this.back;this.back=t;}
+    clipPolys(ps){if(!this.plane)return ps.slice();let f=[],b=[];for(const p of ps)this.plane.split(p,f,b,f,b);if(this.front)f=this.front.clipPolys(f);b=this.back?this.back.clipPolys(b):[];return f.concat(b);}
+    clipTo(t){this.ps=t.clipPolys(this.ps);if(this.front)this.front.clipTo(t);if(this.back)this.back.clipTo(t);}
+    all(){let r=this.ps.slice();if(this.front)r=r.concat(this.front.all());if(this.back)r=r.concat(this.back.all());return r;}
+    build(ps){if(!ps.length)return;if(!this.plane)this.plane=ps[0].plane.clone();const f=[],b=[];for(const p of ps)this.plane.split(p,this.ps,this.ps,f,b);
+      if(f.length){if(!this.front)this.front=new Node();this.front.build(f);}if(b.length){if(!this.back)this.back=new Node();this.back.build(b);}}}
+  function subtract(A,B){const a=new Node(A),b=new Node(B);a.invert();a.clipTo(b);b.clipTo(a);b.invert();b.clipTo(a);b.invert();a.build(b.all());a.invert();return a.all();}
+  // convex prism: planar convex base (array of V) swept by e; faces oriented outward from the centroid
+  function prism(base,e){
+    const top=base.map(p=>p.plus(e)),all=base.concat(top),c=all.reduce((s,p)=>s.plus(p),new V(0,0,0)).times(1/all.length),out=[];
+    const face=pts=>{const pl=Plane.from(pts[0],pts[1],pts[2]),m=pts.reduce((s,p)=>s.plus(p),new V(0,0,0)).times(1/pts.length);if(pl.n.dot(m.minus(c))<0)pts=pts.slice().reverse();out.push(new Poly(pts));};
+    face(base.slice());face(top.slice());
+    for(let i=0;i<base.length;i++){const j=(i+1)%base.length;face([base[i],base[j],top[j],top[i]]);}
+    return out;}
+  function fromGeometry(g){if(g.index)g=g.toNonIndexed();const a=g.attributes.position.array,out=[];
+    for(let i=0;i<a.length;i+=9){const p=[new V(a[i],a[i+1],a[i+2]),new V(a[i+3],a[i+4],a[i+5]),new V(a[i+6],a[i+7],a[i+8])];
+      if(p[1].minus(p[0]).cross(p[2].minus(p[0])).len()<1e-9)continue;out.push(new Poly(p));}return out;}
+  function toGeometry(ps){const pos=[],nor=[];
+    for(const p of ps){const n=p.plane.n;for(let i=2;i<p.vs.length;i++)for(const v of [p.vs[0],p.vs[i-1],p.vs[i]]){pos.push(v.x,v.y,v.z);nor.push(n.x,n.y,n.z);}}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));return g;}
+  const volume=ps=>{let v=0;for(const p of ps)for(let i=2;i<p.vs.length;i++)v+=p.vs[0].dot(p.vs[i-1].cross(p.vs[i]))/6;return v;};
+  return {V,prism,subtract,fromGeometry,toGeometry,volume};
+})();
+
+/* ---------- profile operations: holes and notches ---------- */
+// Local frame of the profile mesh: x = along the length (0 = start), y = up (0..h), z = across (0 = front face, -w = back face).
+const FACES={top:'מלמעלה',bottom:'מלמטה',front:'מלפנים',back:'מאחור'};
+let opSeq=0;
+function newOp(kind,o){const P=S.profSec,L=S.prof.L;
+  if(kind==='hole')return Object.assign({id:++opSeq,kind,face:'top',x:Math.round(L/2),c:0,d:9,n:1,s:100,thru:true},o);
+  const sh=(o&&o.shape)||'rect',t=P?Math.min(P.h,P.w)*.1:3;
+  return Object.assign({id:++opSeq,kind,shape:sh,face:'top',x:Math.round(sh==='v'?L/2:L/2-10),wdt:20,ang:90,depth:P?Math.round(sh==='v'?P.h-Math.max(2,t):P.h/2):10},o);}
+function cleanOps(list){
+  const num=(v,d,a,b)=>{v=Number(v);if(!isFinite(v))v=d;return Math.min(b,Math.max(a,v));};
+  return (Array.isArray(list)?list:[]).slice(0,40).filter(o=>o&&(o.kind==='hole'||o.kind==='notch')).map(o=>{const f=FACES[o.face]?o.face:'top';
+    if(o.kind==='hole')return{id:++opSeq,kind:'hole',face:f,x:num(o.x,100,0,12000),c:num(o.c,0,-1000,1000),d:num(o.d,9,1,200),n:Math.round(num(o.n,1,1,50)),s:num(o.s,100,1,12000),thru:o.thru!==false};
+    return{id:++opSeq,kind:'notch',shape:o.shape==='v'?'v':'rect',face:f,x:num(o.x,100,0,12000),wdt:num(o.wdt,20,1,2000),ang:num(o.ang,90,10,170),depth:num(o.depth,10,0.5,1000)};});
+}
+const holeXs=o=>Array.from({length:o.n},(_,i)=>o.x+i*o.s);
+// cutter solids for every operation, in the local frame
+function opCutters(sec,L){
+  const {V,prism}=CSG,w=sec.w,h=sec.h,out=[];
+  const circ=(r,f)=>Array.from({length:24},(_,i)=>{const a=2*Math.PI*i/24;return f(r*Math.cos(a),r*Math.sin(a));});
+  for(const o of S.prof.ops){
+    if(o.kind==='hole'){const r=o.d/2;
+      for(const x of holeXs(o)){
+        if(o.face==='top'||o.face==='bottom'){const z=-(w/2+o.c),y0=o.thru?-1:o.face==='top'?h/2:-1,y1=o.thru?h+1:o.face==='top'?h+1:h/2;
+          out.push(prism(circ(r,(a,b)=>new V(x+a,y0,z+b)),new V(0,y1-y0,0)));}
+        else{const y=h/2+o.c,z0=o.thru?-w-1:o.face==='front'?-w/2:-w-1,z1=o.thru?1:o.face==='front'?1:-w/2;
+          out.push(prism(circ(r,(a,b)=>new V(x+a,y+b,z0)),new V(0,0,z1-z0)));}}}
+    else if(o.shape==='rect'){const x0=o.x,x1=o.x+o.wdt,d=o.depth;
+      const rect=(p,e)=>out.push(prism(p,e));
+      if(o.face==='top')rect([new V(x0,h-d,-w-1),new V(x1,h-d,-w-1),new V(x1,h-d,1),new V(x0,h-d,1)],new V(0,d+1,0));
+      else if(o.face==='bottom')rect([new V(x0,-1,-w-1),new V(x1,-1,-w-1),new V(x1,-1,1),new V(x0,-1,1)],new V(0,d+1,0));
+      else if(o.face==='front')rect([new V(x0,-1,1),new V(x1,-1,1),new V(x1,h+1,1),new V(x0,h+1,1)],new V(0,0,-(d+1)));
+      else rect([new V(x0,-1,-w-1),new V(x1,-1,-w-1),new V(x1,h+1,-w-1),new V(x0,h+1,-w-1)],new V(0,0,d+1));}
+    else{const xc=o.x,d=o.depth,hw=(d+1)*Math.tan(o.ang*Math.PI/360);
+      if(o.face==='top')out.push(prism([new V(xc-hw,h+1,1),new V(xc+hw,h+1,1),new V(xc,h-d,1)],new V(0,0,-w-2)));
+      else if(o.face==='bottom')out.push(prism([new V(xc-hw,-1,1),new V(xc+hw,-1,1),new V(xc,d,1)],new V(0,0,-w-2)));
+      else if(o.face==='front')out.push(prism([new V(xc-hw,-1,1),new V(xc+hw,-1,1),new V(xc,-1,-d)],new V(0,h+2,0)));
+      else out.push(prism([new V(xc-hw,-1,-w-1),new V(xc+hw,-1,-w-1),new V(xc,-1,-w+d)],new V(0,h+2,0)));}
+  }
+  return out;
+}
+// subtract cutters in batches whose bounding boxes do not overlap (a BSP of disjoint closed solids is valid)
+function cutProfile(geo,cutters){
+  if(!cutters.length)return geo;
+  const bb=ps=>{const b={x0:1e9,y0:1e9,z0:1e9,x1:-1e9,y1:-1e9,z1:-1e9};for(const p of ps)for(const v of p.vs){b.x0=Math.min(b.x0,v.x);b.x1=Math.max(b.x1,v.x);b.y0=Math.min(b.y0,v.y);b.y1=Math.max(b.y1,v.y);b.z0=Math.min(b.z0,v.z);b.z1=Math.max(b.z1,v.z);}return b;};
+  const hit=(a,b)=>a.x0<b.x1+.01&&b.x0<a.x1+.01&&a.y0<b.y1+.01&&b.y0<a.y1+.01&&a.z0<b.z1+.01&&b.z0<a.z1+.01;
+  const items=cutters.map(ps=>({ps,b:bb(ps)})),batches=[];
+  for(const it of items){const bt=batches.find(B=>B.every(o=>!hit(o.b,it.b)));if(bt)bt.push(it);else batches.push([it]);}
+  let polys=CSG.fromGeometry(geo);
+  for(const B of batches)polys=CSG.subtract(polys,B.flatMap(i=>i.ps));
+  return CSG.toGeometry(polys);
+}
+// like THREE.EdgesGeometry, but skips edges with a single face: CSG output has T-junctions whose seams would otherwise draw as stray lines
+function featureEdges(g,deg){
+  const a=g.attributes.position.array,key=i=>`${Math.round(a[i]*1e3)},${Math.round(a[i+1]*1e3)},${Math.round(a[i+2]*1e3)}`,map=new Map(),cos=Math.cos(deg*Math.PI/180),out=[];
+  for(let t=0;t<a.length;t+=9){const P=[t,t+3,t+6],v=P.map(i=>new THREE.Vector3(a[i],a[i+1],a[i+2])),n=new THREE.Vector3().subVectors(v[1],v[0]).cross(new THREE.Vector3().subVectors(v[2],v[0]));
+    if(n.lengthSq()<1e-12)continue;n.normalize();
+    for(let e=0;e<3;e++){const i=P[e],j=P[(e+1)%3],ki=key(i),kj=key(j),k=ki<kj?ki+'|'+kj:kj+'|'+ki,h=map.get(k);
+      if(h)h.n2=n;else map.set(k,{i,j,n1:n,n2:null});}}
+  for(const h of map.values())if(h.n2&&h.n1.dot(h.n2)<cos)out.push(a[h.i],a[h.i+1],a[h.i+2],a[h.j],a[h.j+1],a[h.j+2]);
+  const eg=new THREE.BufferGeometry();eg.setAttribute('position',new THREE.Float32BufferAttribute(out,3));return eg;
+}
+function opWarnings(sec,L){
+  const w=[],H=sec.h,W=sec.w;
+  S.prof.ops.forEach((o,i)=>{const k=`${o.kind==='hole'?'חור':'חירוץ'} ${i+1}`;
+    if(o.kind==='hole'){const xs=holeXs(o),span=(o.face==='top'||o.face==='bottom')?W:H;
+      if(xs[0]-o.d/2<0||xs[xs.length-1]+o.d/2>L)w.push(`${k}: מחוץ לאורך הפרופיל.`);
+      else if(xs[0]-o.d/2<o.d/2||L-(xs[xs.length-1]+o.d/2)<o.d/2)w.push(`${k}: קרוב מאוד לקצה.`);
+      if(Math.abs(o.c)+o.d/2>span/2)w.push(`${k}: יוצא מרוחב הדופן (${fmt(span)} מ״מ).`);}
+    else{const depthMax=(o.face==='top'||o.face==='bottom')?H:W,x0=o.shape==='v'?o.x-o.depth*Math.tan(o.ang*Math.PI/360):o.x,x1=o.shape==='v'?o.x+o.depth*Math.tan(o.ang*Math.PI/360):o.x+o.wdt;
+      if(x0<0||x1>L)w.push(`${k}: מחוץ לאורך הפרופיל.`);
+      if(o.depth>=depthMax)w.push(`${k}: העומק חותך את כל הפרופיל.`);}
+  });
+  return w;
+}
+function opsText(){
+  return S.prof.ops.map((o,i)=>{
+    if(o.kind==='hole')return `${i+1}. חור Ø${fmt(o.d)} ${FACES[o.face]}${o.thru?' (עובר)':''}, ${o.n>1?`${o.n} חורים החל מ-${fmt(o.x)} מ״מ, מרווח ${fmt(o.s)} מ״מ`:`ב-${fmt(o.x)} מ״מ מההתחלה`}${o.c?`, היסט ${fmt(o.c)} מ״מ מהמרכז`:''}`;
+    return o.shape==='v'?`${i+1}. חירוץ V ${FACES[o.face]}, מרכז ב-${fmt(o.x)} מ״מ, זווית ${fmt(o.ang)}°, עומק ${fmt(o.depth)} מ״מ`
+      :`${i+1}. חירוץ ישר ${FACES[o.face]}, מ-${fmt(o.x)} עד ${fmt(o.x+o.wdt)} מ״מ, עומק ${fmt(o.depth)} מ״מ`;});
+}
+function opAnchor(o,sec){ // a point on the face where the op sits (local frame)
+  const w=sec.w,h=sec.h,x=o.kind==='hole'?o.x:o.shape==='v'?o.x:o.x+o.wdt/2,c=o.kind==='hole'?o.c:0;
+  return o.face==='top'?[x,h,-(w/2+c)]:o.face==='bottom'?[x,0,-(w/2+c)]:o.face==='front'?[x,h/2+c,0]:[x,h/2+c,-w];
+}
+function addOpLabels(){
+  if(!partObj||!S.profSec)return;const off=partObj.position,sec=S.profSec;
+  addLabel('התחלה',new THREE.Vector3(off.x,off.y+sec.h+Math.max(12,sec.h*.35),off.z-sec.w/2),'ref');
+  const k=Math.max(10,Math.min(sec.w,sec.h)*.45),push={top:[0,k,0],bottom:[0,-k,0],front:[0,0,k],back:[0,0,-k]};
+  S.prof.ops.forEach((o,i)=>{const [x,y,z]=opAnchor(o,sec),d=push[o.face];addLabel(String(i+1),new THREE.Vector3(x+off.x+d[0],y+off.y+d[1],z+off.z+d[2]),'op');});
+}
+function renderOps(){
+  const box=$('opsList');
+  if(!S.prof.ops.length){box.innerHTML='<p class="note">אין עיבודים. הוסיפו חור או חירוץ, או לחצו על הפרופיל בתלת־ממד.</p>';return;}
+  const faceSel=v=>`<select data-f="face">${Object.entries(FACES).map(([k,l])=>`<option value="${k}"${k===v?' selected':''}>${l}</option>`).join('')}</select>`;
+  const n=(f,l,v,step='any',min=0)=>`<label class="f">${l}<input class="num" data-f="${f}" type="number" inputmode="decimal" step="${step}" min="${min}" value="${v}"></label>`;
+  box.innerHTML=S.prof.ops.map((o,i)=>`<div class="op" data-id="${o.id}">
+    <div class="ophead"><span class="opnum">${i+1}</span><b>${o.kind==='hole'?'חור':'חירוץ'}</b>
+      ${o.kind==='notch'?`<select data-f="shape"><option value="rect"${o.shape==='rect'?' selected':''}>ישר</option><option value="v"${o.shape==='v'?' selected':''}>V לכיפוף</option></select>`:''}
+      ${faceSel(o.face)}<button type="button" class="opdel" data-del="${o.id}" aria-label="מחיקה">×</button></div>
+    <div class="opgrid">${o.kind==='hole'
+      ?n('x','מרחק מההתחלה',o.x)+n('d','קוטר',o.d,'any',1)+n('c','היסט מהמרכז',o.c,'any',-1000)+n('n','כמות',o.n,1,1)+(o.n>1?n('s','מרווח',o.s,'any',1):'')
+        +`<label class="toggle small"><input type="checkbox" data-f="thru"${o.thru?' checked':''}> עובר (שני הצדדים)</label>`
+      :o.shape==='v'?n('x','מרכז מההתחלה',o.x)+n('ang','זווית °',o.ang,'any',10)+n('depth','עומק',o.depth,'any',.5)
+      :n('x','התחלה מההתחלה',o.x)+n('wdt','רוחב',o.wdt,'any',1)+n('depth','עומק',o.depth,'any',.5)}</div></div>`).join('');
+}
+/* placing operations by clicking the 3D model */
+let tool=null;
+function setTool(t){tool=tool===t?null:t;$('toolHole').setAttribute('aria-pressed',tool==='hole');$('toolNotch').setAttribute('aria-pressed',tool==='notch');
+  viewer.classList.toggle('placing',!!tool);$('placeHint').hidden=!tool;
+  if(tool)$('placeHint').textContent=tool==='hole'?'לחצו על הפרופיל במקום החור · Esc לסיום':'לחצו על הפרופיל במקום החירוץ · Esc לסיום';}
+const ray=new THREE.Raycaster();let downAt=null;
+renderer.domElement.addEventListener('pointerdown',e=>{downAt=[e.clientX,e.clientY];});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!tool||!downAt||S.mode!=='prof'||!partObj)return;if(Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])>6)return;
+  const r=renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1),camera);
+  const hit=ray.intersectObjects(partObj.children.filter(o=>o.isMesh),false)[0];if(!hit)return;
+  const p=hit.point.clone().sub(partObj.position),n=hit.face.normal,sec=S.profSec,ax=Math.abs(n.x),ay=Math.abs(n.y),az=Math.abs(n.z);
+  if(ax>ay&&ax>az)return; // end face
+  const face=ay>=az?(n.y>0?'top':'bottom'):(n.z>0?'front':'back'),c=Math.round(ay>=az?-p.z-sec.w/2:p.y-sec.h/2),x=Math.round(p.x);
+  const last=S.prof.ops.filter(o=>o.kind===tool).pop();
+  if(tool==='hole')S.prof.ops.push(newOp('hole',{face,x,c,d:last?last.d:9,thru:last?last.thru:true}));
+  else{const sh=last?last.shape:'rect',o=newOp('notch',{face,shape:sh});if(last){o.depth=last.depth;o.wdt=last.wdt;o.ang=last.ang;}o.x=Math.round(sh==='v'?x:x-o.wdt/2);S.prof.ops.push(o);}
+  renderOps();regenOps();
+});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&tool)setTool(tool);});
+function regenOps(){if(S.mode!=='prof')return;const keep=[camera.position.clone(),controls.target.clone()];regenProfile(false,true);camera.position.copy(keep[0]);controls.target.copy(keep[1]);controls.update();}
+
 /* ---------- fold control ---------- */
 let foldAnim=0;
 function applyFold(p,fromSlider){
@@ -954,7 +1154,7 @@ $('fold').addEventListener('input',e=>{cancelAnimationFrame(foldAnim);applyFold(
 $('playFold').addEventListener('click',playFold);
 
 /* ---------- state ---------- */
-const S={prof:{fam:'shs',size:'40x40x3',L:1000},profSec:null,mode:'tpl',tpl:'angle',preset:'angle',params:{},fold:1,scene:'',ref:false,data:null,geom:null,t:3,mat:'steel',qty:10,bends:0,paint:true,ral:'7016',finish:'matte',file:'',desc:'',dxfText:''};
+const S={prof:{fam:'shs',size:'40x40x3',L:1000,ops:[]},profSec:null,mode:'tpl',tpl:'angle',preset:'angle',params:{},fold:1,scene:'',ref:false,data:null,geom:null,t:3,mat:'steel',qty:10,bends:0,paint:true,ral:'7016',finish:'matte',file:'',desc:'',dxfText:''};
 function ralInfo(){const k=String(S.ral).replace(/\D/g,'');return RAL[k]?{k,hex:RAL[k][0],name:RAL[k][1]}:null;}
 function applyColor(){
   const r=ralInfo();
@@ -1032,8 +1232,10 @@ function updateProfile(){
   if(!CATALOG||!S.profSec)return;
   const P=profNow(),r=ralInfo(),m2=P.sec.perim*S.prof.L/1e6;
   const wt=P.kg*PRICE.prof.perKg[S.mat],cut=PRICE.prof.perCut,paint=S.paint&&r?m2*PRICE.paintPerM2:0;
-  const unit=Math.ceil(wt+cut+paint),total=unit*S.qty;
-  showPrice([['חומר',`${P.kg.toFixed(2)} ק״ג × ₪${PRICE.prof.perKg[S.mat]}`,wt],['חיתוך לאורך','1 חיתוך',cut],['צבע',S.paint&&r?`RAL ${r.k} · ${m2.toFixed(2)} מ״ר`:'ללא',paint]],unit,total);
+  const nh=S.prof.ops.filter(o=>o.kind==='hole').reduce((a,o)=>a+o.n,0),nn=S.prof.ops.filter(o=>o.kind==='notch').length,holes=nh*PRICE.prof.perHole,notches=nn*PRICE.prof.perNotch;
+  const unit=Math.ceil(wt+cut+paint+holes+notches),total=unit*S.qty;
+  showPrice([['חומר',`${P.kg.toFixed(2)} ק״ג × ₪${PRICE.prof.perKg[S.mat]}`,wt],['חיתוך לאורך','1 חיתוך',cut],
+    ['קידוח',nh?`${nh} × ₪${PRICE.prof.perHole}`:'ללא',holes],['חירוץ',nn?`${nn} × ₪${PRICE.prof.perNotch}`:'ללא',notches],['צבע',S.paint&&r?`RAL ${r.k} · ${m2.toFixed(2)} מ״ר`:'ללא',paint]],unit,total);
 }
 function showPrice(rows,unit,total){
   $('priceBody').innerHTML=rows.map(([a,b,v])=>`<tr><td>${a}<span class="det">${b}</span></td><td>${money(Math.round(v*100)/100)}</td></tr>`).join('')+
@@ -1078,10 +1280,25 @@ $('pgrid').addEventListener('input',e=>{
   S.params[k]=v;if(id[0]==='r')$('p_'+k).value=v;else{const r=$('r_'+k);if(+r.max<v)r.max=v;r.value=v;}
   syncShow();clearTimeout(rt);rt=setTimeout(()=>regen(false),id[0]==='r'?40:180);});
 $('pgrid').addEventListener('change',e=>{const k=e.target.id.slice(2);if(!TEMPLATES[S.tpl].fields.find(x=>x.k===k))return;S.params=cleanParams(S.tpl,S.params);$('p_'+k).value=S.params[k];$('r_'+k).value=S.params[k];regen(false);});
-function setMode(m){S.mode=m;$('tabSheet').setAttribute('aria-selected',m!=='prof');$('tabProf').setAttribute('aria-selected',m==='prof');$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('paramsProf').hidden=m!=='prof';$('dxfBox').hidden=m!=='tpl';$('thkWrap').hidden=m==='prof';
+function setMode(m){S.mode=m;$('tabSheet').setAttribute('aria-selected',m!=='prof');$('tabProf').setAttribute('aria-selected',m==='prof');$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('paramsProf').hidden=m!=='prof';$('dxfBox').hidden=m!=='tpl';$('thkWrap').hidden=m==='prof';$('toolHole').hidden=$('toolNotch').hidden=m!=='prof';if(m!=='prof'&&typeof tool!=='undefined'&&tool)setTool(tool);
   syncMats();if(m==='prof'){$('paramsTitle').textContent='פרופיל';cancelAnimationFrame(foldAnim);S.geom=null;}if(m==='dxf'){$('paramsTitle').textContent='כיפוף';S.bends=parseInt($('bends').value)||0;markPreset('dxf');regen(true);}}
 
 $('famChips').addEventListener('click',e=>{const b=e.target.closest('.fam');if(!b)return;const f=CATALOG.find(x=>x.id===b.dataset.fam);S.prof.fam=f.id;S.prof.size=f.def;syncMats();renderProfForm();regen(true);});
+$('toolHole').addEventListener('click',()=>setTool('hole'));
+$('toolNotch').addEventListener('click',()=>setTool('notch'));
+$('opAddHole').addEventListener('click',()=>{S.prof.ops.push(newOp('hole'));renderOps();regenOps();});
+$('opAddNotch').addEventListener('click',()=>{S.prof.ops.push(newOp('notch'));renderOps();regenOps();});
+let opt;
+function opEdit(e,final){const card=e.target.closest('.op'),f=e.target.dataset.f;if(!card||!f)return;
+  const o=S.prof.ops.find(x=>x.id===+card.dataset.id);if(!o)return;
+  if(f==='thru')o.thru=e.target.checked;else if(f==='face')o.face=e.target.value;
+  else if(f==='shape'){if(o.shape===e.target.value)return;const d=newOp('notch',{shape:e.target.value});o.x=Math.round(e.target.value==='v'?o.x+o.wdt/2:o.x-o.wdt/2);o.shape=d.shape;o.depth=d.depth;}
+  else{const v=parseFloat(e.target.value);if(!isFinite(v))return;o[f]=f==='n'?Math.max(1,Math.min(50,Math.round(v))):v;}
+  if(final&&(f==='shape'||f==='n'))renderOps();
+  clearTimeout(opt);opt=setTimeout(regenOps,final?0:220);}
+$('opsList').addEventListener('input',e=>opEdit(e,false));
+$('opsList').addEventListener('change',e=>opEdit(e,true));
+$('opsList').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;S.prof.ops=S.prof.ops.filter(o=>o.id!==+b.dataset.del);renderOps();regenOps();});
 $('profSize').addEventListener('change',e=>{S.prof.size=e.target.value;regen(false);});
 let plt;
 $('profLr').addEventListener('input',e=>{S.prof.L=+e.target.value;$('profL').value=S.prof.L;clearTimeout(plt);plt=setTimeout(()=>regen(false),40);});
@@ -1141,7 +1358,7 @@ const TPL_DOC=`- plate: flat rectangle. W length, H width, r corner radius (0 = 
 - angle: L angle with one 90° bend (also a shelf bracket or wall bracket). A lying leg (outside), B standing leg (outside), L length, hn holes in EACH leg spaced along the length, hd hole diameter.
 - channel: U channel, two 90° bends (cable tray, gutter, cover). W base width (outside), H side height (outside), L length, hn holes in the base, hd.
 - zed: Z profile, two bends in opposite directions. a bottom flange, h height, c top flange, L length, hn holes in each flange, hd.
-- profile: a standard steel section cut to length (tube, angle, beam, flat bar, round bar). Instead of "params" give "profile":{"family":"shs|rhs|chs|angle|flat|round|upn|ipe|hea|heb","size":"...","length":1200}. Size ids: shs "BxBxt" (40x40x3), rhs "BxHxt" (60x40x3), chs "Dxt" (48.3x3.2), angle "axt" (50x5), flat "bxt" (40x5), round "d" (12), upn/ipe/hea/heb the nominal height (200). length = one piece in mm. Ignore "thickness" for profiles.
+- profile: a standard steel section cut to length (tube, angle, beam, flat bar, round bar). Instead of "params" give "profile":{"family":"shs|rhs|chs|angle|flat|round|upn|ipe|hea|heb","size":"...","length":1200}. Size ids: shs "BxBxt" (40x40x3), rhs "BxHxt" (60x40x3), chs "Dxt" (48.3x3.2), angle "axt" (50x5), flat "bxt" (40x5), round "d" (12), upn/ipe/hea/heb the nominal height (200). length = one piece in mm. Ignore "thickness" for profiles. Optional "ops" (holes and notches, positions in mm from the start of the piece; face is top|bottom|front|back): {"kind":"hole","face":"top","x":50,"c":0,"d":9,"n":2,"s":200,"thru":true} (c = offset from the face centre, n holes spaced s apart, thru = through both walls); {"kind":"notch","shape":"rect","face":"top","x":300,"wdt":20,"depth":20} (x = notch start); {"kind":"notch","shape":"v","face":"top","x":500,"ang":90,"depth":37} (x = centre, V-notch for bending; depth usually height minus wall). Always send the full ops list.
 - tray: open tray or box with four sides bent up (planter, drip tray, tool tray). L length, W width, H wall height (outside), hn holes in the bottom, hd.`;
 const CHAT_RULES=`You are the friendly ordering assistant of an Israeli laser-cutting and sheet-metal bending shop. You chat in Hebrew with customers who cannot read technical drawings and turn what they say (and any sketch or photo) into a part that is drawn live on their screen in 3D.
 Templates (choose ONE; all lengths in millimetres, numbers only; fill ALL params of the chosen template):
@@ -1169,7 +1386,7 @@ function bubble(role,text,img,built){
 }
 function typingBubble(){const m=document.createElement('div');m.className='msg bot';m.innerHTML='<span class="typing" aria-label="חושב"><i></i><i></i><i></i></span>';$('chat').appendChild(m);$('chat').scrollTop=$('chat').scrollHeight;return m;}
 function quick(list){const q=$('quick');q.innerHTML='';(list||[]).filter(s=>typeof s==='string'&&s.trim()).slice(0,4).forEach(s=>{const b=document.createElement('button');b.type='button';b.className='qr';b.textContent=s.slice(0,60);b.onclick=()=>send(s);q.appendChild(b);});}
-function currentDesign(){if(S.mode==='prof')return{template:'profile',profile:{family:S.prof.fam,size:S.prof.size,length:S.prof.L},material:S.mat,qty:S.qty,ral:S.paint?S.ral:'none'};return S.mode==='tpl'?{template:S.tpl,params:cleanParams(S.tpl,S.params),material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'}:{template:'uploaded DXF file',material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'};}
+function currentDesign(){if(S.mode==='prof')return{template:'profile',profile:{family:S.prof.fam,size:S.prof.size,length:S.prof.L,ops:S.prof.ops.map(({id,...o})=>o)},material:S.mat,qty:S.qty,ral:S.paint?S.ral:'none'};return S.mode==='tpl'?{template:S.tpl,params:cleanParams(S.tpl,S.params),material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'}:{template:'uploaded DXF file',material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'};}
 async function send(text,img){
   text=(text||'').trim();if(!text&&!img)return;
   if(ctl)return;
@@ -1275,7 +1492,7 @@ function localParse(raw){
 
 /* ---------- order ---------- */
 function shapeLine(){
-  if(S.mode==='prof'){const P=profNow();return `פרופיל: ${P.f.name} ${P.z.label} (${P.f.std}), אורך ${fmt(S.prof.L)} מ״מ`;}
+  if(S.mode==='prof'){const P=profNow(),ops=opsText();return `פרופיל: ${P.f.name} ${P.z.label} (${P.f.std}), אורך ${fmt(S.prof.L)} מ״מ`+(ops.length?'\nעיבודים (מידות מתחילת הפרופיל):\n'+ops.join('\n'):'');}
   if(S.mode==='dxf')return `קובץ: ${S.file}${S.bends?`, ${S.bends} כיפופים`+($('bendNote').value?` (${$('bendNote').value})`:''):''}`;
   const T=TEMPLATES[S.tpl];
   return `צורה: ${T.name}. `+T.fields.filter(f=>!f.show||f.show(S.params)).map(f=>`${f.l} ${fmt(S.params[f.k])}`).join(', ');
