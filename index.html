@@ -158,6 +158,18 @@ table.price tr.tot td:last-child{font:500 22px var(--f-mono);color:var(--accent)
 .done h3{margin:0;color:var(--ok);font:700 15px var(--f-display)}
 .btn.wa{text-align:center;text-decoration:none;background:#25D366;border-color:#25D366;color:#06210F}
 input[aria-invalid="true"]{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+.famchips{display:flex;flex-wrap:wrap;gap:6px}
+.fam{font:600 13px var(--f-body);padding:5px 10px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2);color:var(--ink);cursor:pointer}
+.fam[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.fam:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.profspec{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0;font-size:13px}
+.profspec dt{color:var(--muted)}
+.profspec dd{margin:0;font-family:var(--f-mono);unicode-bidi:plaintext;text-align:right;font-variant-numeric:tabular-nums}
+.profinfo{display:flex;gap:14px;align-items:center}
+.profinfo .profspec{flex:1;min-width:0}
+.secsvg{flex:none;width:110px;height:110px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px}
+.secsvg path{fill:var(--muted);fill-rule:evenodd;stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke}
+.facts bdi{unicode-bidi:isolate}
 .done pre{margin:0;white-space:pre-wrap;font:13px/1.55 var(--f-body);max-height:260px;overflow:auto}
 .tb:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.ral-chip:focus-visible,.seg button:focus-visible,.tile:focus-visible,.qr:focus-visible,.play:focus-visible,details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
@@ -259,6 +271,17 @@ h1{font-size:22px}
           </label>
           <input id="bendNote" type="text" placeholder="איך לכופף?">
         </div>
+        <div id="paramsProf" class="pgrid" hidden>
+          <div class="famchips" id="famChips" role="group" aria-label="סוג פרופיל"></div>
+          <label class="f">מידה
+            <select id="profSize" class="num"></select>
+          </label>
+          <div class="fld">
+            <div class="top"><label for="profL">אורך חתיכה (מ״מ)</label></div>
+            <div class="ctl"><input type="range" id="profLr" min="20" max="6000" step="10" value="1000" aria-label="אורך חתיכה"><input id="profL" class="num" type="number" inputmode="decimal" min="20" max="12000" step="any" value="1000"></div>
+          </div>
+          <div class="profinfo"><svg class="secsvg" id="secSvg" role="img" aria-label="חתך הפרופיל"></svg><dl class="profspec" id="profSpec"></dl></div>
+        </div>
         <div class="bendinfo" id="bendInfo"></div>
         <div class="warns" id="warns"></div>
         <div id="okLine" hidden></div>
@@ -274,7 +297,7 @@ h1{font-size:22px}
           <label class="f">חומר
             <select id="mat"><option value="steel">ברזל</option><option value="galv">מגולוון</option><option value="ss">נירוסטה</option><option value="al">אלומיניום</option></select>
           </label>
-          <label class="f">עובי
+          <label class="f" id="thkWrap">עובי
             <select id="thk" class="num"><option>1</option><option>1.5</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option></select>
           </label>
           <label class="f">כמות
@@ -332,6 +355,8 @@ const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 // WhatsApp number of the shop, international format without + or leading 0 (e.g. 972501234567). Empty = customer picks a chat.
 const SHOP_WHATSAPP='';
 const PRICE={cutPerMm:0.02,perPierce:3,perKg:{steel:9,galv:12,ss:30,al:32},perBend:6,paintPerM2:70};
+// Profiles (cut to length): material price per kg + one saw cut per piece; paint per m² of outer surface
+PRICE.prof={perKg:{steel:7,galv:9.5,ss:28,al:30},perCut:4,kerf:3};
 const DENSITY={steel:0.00000785,galv:0.00000785,ss:0.00000793,al:0.0000027}; // kg/mm³
 const MAT_NAME={steel:'ברזל שחור',galv:'מגולוון',ss:'נירוסטה',al:'אלומיניום'};
 const RAW={steel:{c:'#5F666C',m:.35,r:.55},galv:{c:'#A7AFB3',m:.45,r:.4},ss:{c:'#C4C9CC',m:.55,r:.28},al:{c:'#CDD2D6',m:.4,r:.38}};
@@ -491,6 +516,7 @@ const ICON={
   channel:'<path d="M5 6 V32 H43 V6 H38 V27 H10 V6 Z"/>',
   zed:'<path d="M4 25 H19 V5 H44 V10 H24 V30 H4 Z"/>',
   tray:'<path d="M6 14 L24 6 L42 14 V24 L24 32 L6 24 Z"/><path d="M6 14 L24 22 L42 14 M24 22 V32"/>',
+  prof:'<path d="M12 5 H36 V10 H27 V26 H36 V31 H12 V26 H21 V10 H12 Z"/>',
   dxf:'<path d="M13 3 H30 L37 10 V33 H13 Z M30 3 V10 H37"/><path d="M18 19 H32 M18 24 H32 M18 29 H27"/>'
 };
 const PRESETS=[
@@ -502,6 +528,7 @@ const PRESETS=[
   {id:'channel',label:'תעלה',tpl:'channel',p:{W:100,H:50,L:500,hn:3,hd:11}},
   {id:'zed',label:'Z',tpl:'zed',p:{a:40,h:80,c:40,L:400,hn:2,hd:9}},
   {id:'tray',label:'מגש',tpl:'tray',p:{L:300,W:200,H:40,hn:0,hd:8}},
+  {id:'prof',label:'פרופיל',tpl:null},
   {id:'dxf',label:'DXF',tpl:null}
 ];
 
@@ -615,6 +642,134 @@ function flatDXF(fl){
   o.push('0','ENDSEC','0','EOF');return o.join('\n');
 }
 
+/* ---------- profile catalog ---------- */
+// The catalog comes from CatalogSource.load(). Today it returns built-in tables of European standard sections.
+// To sync with an external supplier/API later, replace load() with a fetch that returns the same shape:
+// [{id,name,std,mats:[...],stock:[mm...],def:'sizeId',dims:[[key,label]...],sizes:[{id,label,d:{...},kgm?}]}]
+// kgm (kg/m, steel) is taken from the standard tables where given, otherwise computed from the cross-section.
+const CatalogSource={name:'built-in',async load(){return builtinCatalog();}};
+let CATALOG=null;
+async function getCatalog(){if(!CATALOG)CATALOG=await CatalogSource.load();return CATALOG;}
+function builtinCatalog(){
+  const ALL=['steel','galv','ss','al'],STR=['steel','galv'];
+  const n=x=>String(x),X=(...a)=>a.join('x'),XL=(...a)=>a.join('×');
+  const beam=rows=>rows.map(([id,h,b,tw,tf,r,kgm])=>({id:n(id),label:n(id),d:{h,b,tw,tf,r},kgm}));
+  return [
+    {id:'shs',name:'צינור מרובע',std:'EN 10219 (SHS)',mats:ALL,stock:[6000],def:'40x40x3',dims:[['B','צלע'],['t','דופן']],
+     sizes:[[20,2],[25,2],[30,2],[30,3],[40,2],[40,3],[40,4],[50,3],[50,4],[60,3],[60,4],[70,4],[80,3],[80,4],[80,5],[100,4],[100,5],[100,6],[120,5],[120,6],[150,6],[150,8],[200,8]]
+       .map(([B,t])=>({id:X(B,B,t),label:XL(B,B,t),d:{B,H:B,t}}))},
+    {id:'rhs',name:'צינור מלבני',std:'EN 10219 (RHS)',mats:ALL,stock:[6000],def:'60x40x3',dims:[['B','רוחב'],['H','גובה'],['t','דופן']],
+     sizes:[[30,20,2],[40,20,2],[40,30,2],[50,25,2],[50,30,3],[60,30,3],[60,40,3],[80,40,3],[80,40,4],[100,40,4],[100,50,3],[100,50,4],[100,60,4],[120,60,4],[120,80,5],[150,50,5],[150,100,5],[200,100,6]]
+       .map(([B,H,t])=>({id:X(B,H,t),label:XL(B,H,t),d:{B,H,t}}))},
+    {id:'chs',name:'צינור עגול',std:'EN 10219 / 10255 (CHS)',mats:ALL,stock:[6000],def:'48.3x3.2',dims:[['D','קוטר חיצוני'],['t','דופן']],
+     sizes:[[21.3,2.6],[26.9,2.6],[33.7,3.2],[42.4,3.2],[48.3,3.2],[60.3,3.6],[76.1,3.6],[88.9,4],[114.3,4.5],[139.7,5],[168.3,5]]
+       .map(([D,t])=>({id:X(D,t),label:XL(D,t),d:{D,t}}))},
+    {id:'angle',name:'זוויתן',std:'EN 10056',mats:ALL,stock:[6000],def:'40x4',dims:[['a','שוק'],['t','עובי']],
+     sizes:[[20,3,3.5,0.88],[25,3,3.5,1.12],[25,4,3.5,1.45],[30,3,5,1.36],[30,4,5,1.78],[35,4,5,2.09],[40,4,6,2.42],[40,5,6,2.97],[45,5,7,3.38],[50,5,7,3.77],[50,6,7,4.47],[60,6,8,5.42],[60,8,8,7.09],[70,7,9,7.38],[80,8,10,9.63],[90,9,11,12.2],[100,10,12,15.0],[120,12,13,21.6]]
+       .map(([a,t,r,kgm])=>({id:X(a,t),label:XL(a,a,t),d:{a,t,r},kgm}))},
+    {id:'flat',name:'פס שטוח',std:'EN 10058',mats:ALL,stock:[6000],def:'40x5',dims:[['b','רוחב'],['t','עובי']],
+     sizes:[15,20,25,30,35,40,50,60,70,80,100,120,150,200].flatMap(b=>[2,3,4,5,6,8,10,12,15,20,25].filter(t=>t<=b/2&&(t<=12||b>=40)).map(t=>({id:X(b,t),label:XL(b,t),d:{b,t}})))},
+    {id:'round',name:'מוט עגול',std:'EN 10060',mats:ALL,stock:[6000],def:'12',dims:[['d','קוטר']],
+     sizes:[6,8,10,12,14,16,18,20,22,25,30,35,40,50,60].map(d=>({id:n(d),label:'Ø'+d,d:{d}}))},
+    {id:'upn',name:'UPN',std:'DIN 1026-1 (U)',mats:STR,stock:[6000,12000],def:'100',dims:[['h','גובה'],['b','רוחב כנף'],['tw','דופן'],['tf','כנף']],
+     sizes:beam([[50,50,38,5,7,7,5.59],[65,65,42,5.5,7.5,7.5,7.09],[80,80,45,6,8,8,8.64],[100,100,50,6,8.5,8.5,10.6],[120,120,55,7,9,9,13.4],[140,140,60,7,10,10,16.0],[160,160,65,7.5,10.5,10.5,18.8],[180,180,70,8,11,11,22.0],[200,200,75,8.5,11.5,11.5,25.3],[220,220,80,9,12.5,12.5,29.4],[240,240,85,9.5,13,13,33.2],[260,260,90,10,14,14,37.9],[300,300,100,10,16,16,46.2]])},
+    {id:'ipe',name:'IPE',std:'EN 10365',mats:STR,stock:[6000,12000],def:'200',dims:[['h','גובה'],['b','רוחב כנף'],['tw','דופן'],['tf','כנף']],
+     sizes:beam([[80,80,46,3.8,5.2,5,6.0],[100,100,55,4.1,5.7,7,8.1],[120,120,64,4.4,6.3,7,10.4],[140,140,73,4.7,6.9,7,12.9],[160,160,82,5,7.4,9,15.8],[180,180,91,5.3,8,9,18.8],[200,200,100,5.6,8.5,12,22.4],[220,220,110,5.9,9.2,12,26.2],[240,240,120,6.2,9.8,15,30.7],[270,270,135,6.6,10.2,15,36.1],[300,300,150,7.1,10.7,15,42.2],[330,330,160,7.5,11.5,18,49.1],[360,360,170,8,12.7,18,57.1],[400,400,180,8.6,13.5,21,66.3],[450,450,190,9.4,14.6,21,77.6],[500,500,200,10.2,16,21,90.7],[600,600,220,12,19,24,122]])},
+    {id:'hea',name:'HEA',std:'EN 10365',mats:STR,stock:[6000,12000],def:'200',dims:[['h','גובה'],['b','רוחב כנף'],['tw','דופן'],['tf','כנף']],
+     sizes:beam([[100,96,100,5,8,12,16.7],[120,114,120,5,8,12,19.9],[140,133,140,5.5,8.5,12,24.7],[160,152,160,6,9,15,30.4],[180,171,180,6,9.5,15,35.5],[200,190,200,6.5,10,18,42.3],[220,210,220,7,11,18,50.5],[240,230,240,7.5,12,21,60.3],[260,250,260,7.5,12.5,24,68.2],[280,270,280,8,13,24,76.4],[300,290,300,8.5,14,27,88.3]])},
+    {id:'heb',name:'HEB',std:'EN 10365',mats:STR,stock:[6000,12000],def:'200',dims:[['h','גובה'],['b','רוחב כנף'],['tw','דופן'],['tf','כנף']],
+     sizes:beam([[100,100,100,6,10,12,20.4],[120,120,120,6.5,11,12,26.7],[140,140,140,7,12,12,33.7],[160,160,160,8,13,15,42.6],[180,180,180,8.5,14,15,51.2],[200,200,200,9,15,18,61.3],[220,220,220,9.5,16,18,71.5],[240,240,240,10,17,21,83.2],[260,260,260,10,17.5,24,93.0],[280,280,280,10.5,18,24,103],[300,300,300,11,19,27,117]])}
+  ];
+}
+// cross-section polygons (mm, x right / y up). Root radii are drawn; UPN flanges are drawn parallel (no taper).
+const arcTo=(pts,cx,cy,r,a0,a1,k=8)=>{for(let i=0;i<=k;i++){const a=(a0+(a1-a0)*i/k)*Math.PI/180;pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});}return pts;};
+const rrectPts=(x0,y0,w,h,r)=>{if(r<=0)return[{x:x0,y:y0},{x:x0+w,y:y0},{x:x0+w,y:y0+h},{x:x0,y:y0+h}];const p=[];arcTo(p,x0+w-r,y0+r,r,-90,0);arcTo(p,x0+w-r,y0+h-r,r,0,90);arcTo(p,x0+r,y0+h-r,r,90,180);arcTo(p,x0+r,y0+r,r,180,270);return p;};
+const circPts=(cx,cy,r,k=72)=>Array.from({length:k},(_,i)=>({x:cx+r*Math.cos(2*Math.PI*i/k),y:cy+r*Math.sin(2*Math.PI*i/k)}));
+function section(fam,d){
+  let outer,holes=[];
+  if(fam==='ipe'||fam==='hea'||fam==='heb'){const{h,b,tw,tf,r}=d,xr=b/2+tw/2,xl=b/2-tw/2;outer=[{x:0,y:0},{x:b,y:0},{x:b,y:tf}];
+    arcTo(outer,xr+r,tf+r,r,270,180);arcTo(outer,xr+r,h-tf-r,r,180,90);outer.push({x:b,y:h-tf},{x:b,y:h},{x:0,y:h},{x:0,y:h-tf});
+    arcTo(outer,xl-r,h-tf-r,r,90,0);arcTo(outer,xl-r,tf+r,r,0,-90);outer.push({x:0,y:tf});}
+  else if(fam==='upn'){const{h,b,tw,tf,r}=d;outer=[{x:0,y:0},{x:b,y:0},{x:b,y:tf}];arcTo(outer,tw+r,tf+r,r,270,180);arcTo(outer,tw+r,h-tf-r,r,180,90);outer.push({x:b,y:h-tf},{x:b,y:h},{x:0,y:h});}
+  else if(fam==='angle'){const{a,t,r}=d;outer=[{x:0,y:0},{x:a,y:0},{x:a,y:t}];arcTo(outer,t+r,t+r,r,270,180);outer.push({x:t,y:a},{x:0,y:a});}
+  else if(fam==='shs'||fam==='rhs'){const{B,H,t}=d,ro=t<=6?2*t:2.5*t,ri=t<=6?t:1.5*t;outer=rrectPts(0,0,B,H,ro);holes=[rrectPts(t,t,B-2*t,H-2*t,ri)];}
+  else if(fam==='chs'){const{D,t}=d;outer=circPts(D/2,D/2,D/2);holes=[circPts(D/2,D/2,D/2-t)];}
+  else if(fam==='flat'){const{b,t}=d;outer=rrectPts(0,0,b,t,0);}
+  else{const{d:D}=d;outer=circPts(D/2,D/2,D/2);}
+  const bb=bbox(outer),ar=q=>Math.abs(area(q));
+  return {outer,holes,w:bb.w,h:bb.h,area:ar(outer)-holes.reduce((s,q)=>s+ar(q),0),perim:plen(outer,true)};
+}
+function profNow(){
+  const f=CATALOG.find(x=>x.id===S.prof.fam)||CATALOG[0];S.prof.fam=f.id;
+  const z=f.sizes.find(x=>x.id===S.prof.size)||f.sizes.find(x=>x.id===f.def);S.prof.size=z.id;
+  const sec=section(f.id,z.d),dr=DENSITY[S.mat]/DENSITY.steel,kgm=(z.kgm||sec.area*7.85e-3)*dr,L=S.prof.L;
+  const stock=f.stock.find(x=>x>=L)||f.stock[f.stock.length-1],per=Math.floor((stock+PRICE.prof.kerf)/(L+PRICE.prof.kerf));
+  return {f,z,sec,kgm,kg:kgm*L/1000,stock,per,bars:per?Math.ceil(S.qty/per):null};
+}
+function syncMats(){
+  const allowed=S.mode==='prof'&&CATALOG?profNow().f.mats:['steel','galv','ss','al'];
+  [...$('mat').options].forEach(o=>{o.disabled=!allowed.includes(o.value);o.hidden=o.disabled;});
+  if(!allowed.includes(S.mat)){S.mat=allowed[0];$('mat').value=S.mat;applyColor();}
+}
+async function openProfile(p){
+  await getCatalog();p=p||{};
+  const f=CATALOG.find(x=>x.id===p.family);
+  if(f&&f.id!==S.prof.fam){S.prof.fam=f.id;S.prof.size=f.def;}
+  if(p.size!=null&&profNow().f.sizes.some(x=>x.id===String(p.size)))S.prof.size=String(p.size);
+  const L=Number(p.length);if(isFinite(L)&&L>0)S.prof.L=Math.min(12000,Math.max(20,Math.round(L)));
+  S.preset='prof';markPreset('prof');setMode('prof');renderProfForm();regen(true);
+}
+function renderProfForm(){
+  const f=profNow().f;
+  $('famChips').innerHTML=CATALOG.map(x=>`<button type="button" class="fam" data-fam="${x.id}" aria-pressed="${x.id===f.id}">${x.name}</button>`).join('');
+  $('profSize').innerHTML=f.sizes.map(z=>`<option value="${z.id}">${z.label}</option>`).join('');$('profSize').value=S.prof.size;
+  $('profL').value=S.prof.L;$('profLr').max=Math.max(6000,S.prof.L);$('profLr').value=S.prof.L;
+}
+function regenProfile(fit){
+  $('err').hidden=true;
+  const P=profNow(),w=[];S.profSec=P.sec;
+  if(S.prof.L>P.stock)w.push(`ארוך ממוט סטנדרטי (${P.stock/1000} מ׳). נדרש חיבור בריתוך.`);
+  if(S.mat==='ss'||S.mat==='al')w.push('מידות לפי טבלאות פלדה. בנירוסטה ובאלומיניום הזמינות והמשקל משתנים, נאשר מול הספק.');
+  S.warns=w;$('warns').innerHTML='';w.forEach(x=>{const d=document.createElement('div');d.textContent=x;$('warns').appendChild(d);});
+  $('okLine').hidden=true;$('bendInfo').textContent='';$('foldbar').hidden=true;$('fileBadge').textContent='';
+  $('profSpec').innerHTML=[['תקן',P.f.std],...P.f.dims.map(([k,l])=>[l,fmt(P.z.d[k])+' מ״מ']),['משקל למטר',P.kgm.toFixed(2)+' ק״ג'],['מוט במלאי',P.stock/1000+' מ׳'],
+    ['חתיכות ממוט',P.per?String(P.per):'—'],['מוטות להזמנה',P.bars?String(P.bars):'—']].map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+  drawSection(P.sec);
+  build();if(fit)setView('iso');else setView(lastView);
+  update();
+}
+function drawSection(sec){
+  const pad=Math.max(sec.w,sec.h)*.1,d=q=>'M'+q.map(v=>`${v.x.toFixed(2)} ${(sec.h-v.y).toFixed(2)}`).join(' L')+' Z';
+  const svg=$('secSvg');svg.setAttribute('viewBox',`${-pad} ${-pad} ${sec.w+2*pad} ${sec.h+2*pad}`);
+  svg.innerHTML=`<path d="${[sec.outer,...sec.holes].map(d).join(' ')}"/>`;
+}
+function buildProfileMesh(part){
+  const sec=S.profSec,sh=new THREE.Shape(sec.outer.map(q=>new THREE.Vector2(q.x,q.y)));
+  sec.holes.forEach(h=>sh.holes.push(new THREE.Path(h.map(q=>new THREE.Vector2(q.x,q.y)))));
+  const g=new THREE.ExtrudeGeometry(sh,{depth:S.prof.L,bevelEnabled:false,curveSegments:1});
+  g.rotateY(Math.PI/2);g.computeVertexNormals();addMesh(part,g);
+}
+// offline fallback: "צינור 40x40x3 באורך 1.2 מטר", "IPE 200 אורך 3 מטר", "זוויתן 50x5"
+function profileParse(raw){
+  let s=' '+raw.replace(/[×✕*]/g,'x').replace(/[״"”'׳]/g,'').toLowerCase()+' ';
+  const fam=/ipe/.test(s)?'ipe':/hea/.test(s)?'hea':/heb/.test(s)?'heb':/upn|פרופיל u(?=\s)/.test(s)?'upn':
+    /צינור/.test(s)&&/עגול/.test(s)?'chs':/צינור/.test(s)&&/מלבני/.test(s)?'rhs':/צינור|פרופיל מרובע/.test(s)?'shs':
+    /זוויתן|זויתן/.test(s)?'angle':/(^|\s)פס(?=\s)/.test(s)?'flat':/מוט/.test(s)?'round':null;
+  if(!fam)return null;
+  const N='(\\d+(?:\\.\\d+)?)';let m,L=null;
+  s=s.replace(new RegExp(N+'\\s*(?:יחידות|יחידה|יח|חלקים|חתיכות|pcs)(?=\\s)'),' ');
+  if(m=s.match(new RegExp('(?:באורך|אורך)\\s*'+N+'\\s*(מטר|מ(?=\\s)|סמ|ס\\s*מ|ממ|מילימטר|mm|cm|m(?=\\s))?'))){
+    const v=+m[1],u=m[2]||'';L=/מטר|^מ$|^m$/.test(u)?v*1000:/סמ|cm/.test(u)?v*10:/ממ|מילימטר|mm/.test(u)?v:(v<=12?v*1000:v);s=s.replace(m[0],' ');}
+  let t=null;if(m=s.match(new RegExp('(?:בעובי|עובי|דופן)\\s*'+N))){t=+m[1];s=s.replace(m[0],' ');}
+  const g=s.match(new RegExp(N+'(?:\\s*x\\s*'+N+')?(?:\\s*x\\s*'+N+')?'));
+  let want=g?[g[1],g[2],g[3]].filter(Boolean).map(Number):[];if(t!=null)want.push(t);
+  let fam2=fam;if(fam==='shs'&&want.length===3&&want[0]!==want[1])fam2='rhs';
+  const f=CATALOG.find(x=>x.id===fam2);let best=null;
+  if(want.length){let bs=1e9;f.sizes.forEach(z=>{let k=z.id.split('x').map(Number);if(fam2==='shs'&&want.length<3)k=[k[0],k[2]];if(fam2==='angle'&&want.length===3)want=[want[0],want[2]];
+    let sc=0;for(let i=0;i<Math.min(k.length,want.length);i++)sc+=Math.abs(k[i]-want[i])*(i===0?10:1);if(sc<bs){bs=sc;best=z;}});}
+  return {family:fam2,size:best?best.id:f.def,length:L};
+}
+
 /* ---------- 3D scene ---------- */
 const viewer=$('viewer'),labelsEl=$('labels');
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -639,7 +794,9 @@ function addMesh(container,g){container.add(new THREE.Mesh(g,mat));container.add
 function clearScene(){group.clear();dimLabels.forEach(l=>l.el.remove());dimLabels=[];pivots=[];partObj=null;}
 function sceneKind(){const bent=!!(S.geom&&S.geom.faces);if(!bent)return'flat';return S.fold>=1?'folded':S.fold<=0?'flat':'hinge';}
 function build(){
-  clearScene();if(!S.data)return;
+  clearScene();
+  if(S.mode==='prof'){if(!S.profSec)return;const part=new THREE.Group();partObj=part;S.scene='prof';buildProfileMesh(part);finishScene(part,'prof');return;}
+  if(!S.data)return;
   const kind=sceneKind();S.scene=kind;
   const part=new THREE.Group();partObj=part;
   if(kind==='folded'){
@@ -667,10 +824,13 @@ function build(){
       const bl=new THREE.LineSegments(bg,bendMat);bl.computeLineDistances();part.add(bl);
     }
   }
+  finishScene(part,kind);
+}
+function finishScene(part,kind){
   group.add(part);recentre();
   box=new THREE.Box3().setFromObject(part);
   const W=box.max.x-box.min.x,D=box.max.z-box.min.z,Hh=box.max.y-box.min.y;
-  const M=Math.max(W,D,Hh,S.data.W,S.data.H);
+  const M=kind==='prof'?Math.max(W,D,Hh):Math.max(W,D,Hh,S.data.W,S.data.H);
   const step=M>800?50:10,size=Math.ceil(M*1.6/step)*step;
   const grid=new THREE.GridHelper(size,Math.min(200,size/step),new THREE.Color(tok('--grid-a')),new THREE.Color(tok('--grid-b')));grid.position.y=-0.05;group.add(grid);
   viewBox=box.clone();
@@ -683,12 +843,12 @@ function build(){
     const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
     dimLines=new THREE.LineSegments(lg,dimMat);dimLines.visible=showDims;group.add(dimLines);
     addLabel(fmt(W),new THREE.Vector3(0,y,zf));addLabel(fmt(D),new THREE.Vector3(xr,y,(box.min.z+box.max.z)/2));
-    addLabel(kind==='folded'?fmt(Hh):'t '+fmt(S.t),new THREE.Vector3(tx,Hh/2,tz));
+    addLabel(kind==='folded'||kind==='prof'?fmt(Hh):'t '+fmt(S.t),new THREE.Vector3(tx,Hh/2,tz));
     S.box={W,D,H:Hh};
     if(S.ref)addRef(W,D,Hh);
   }
   applyColor();applySceneTheme();
-  $('legend').hidden=!(S.data.bends.length&&kind==='flat');
+  $('legend').hidden=!(kind==='flat'&&S.data&&S.data.bends.length);
 }
 function addRef(W,D,Hh){
   const M=Math.max(W,D,Hh),gap=Math.max(60,M*.12);
@@ -776,7 +936,7 @@ $('fold').addEventListener('input',e=>{cancelAnimationFrame(foldAnim);applyFold(
 $('playFold').addEventListener('click',playFold);
 
 /* ---------- state ---------- */
-const S={mode:'tpl',tpl:'angle',preset:'angle',params:{},fold:1,scene:'',ref:false,data:null,geom:null,t:3,mat:'steel',qty:10,bends:0,paint:true,ral:'7016',finish:'matte',file:'',desc:'',dxfText:''};
+const S={prof:{fam:'shs',size:'40x40x3',L:1000},profSec:null,mode:'tpl',tpl:'angle',preset:'angle',params:{},fold:1,scene:'',ref:false,data:null,geom:null,t:3,mat:'steel',qty:10,bends:0,paint:true,ral:'7016',finish:'matte',file:'',desc:'',dxfText:''};
 function ralInfo(){const k=String(S.ral).replace(/\D/g,'');return RAL[k]?{k,hex:RAL[k][0],name:RAL[k][1]}:null;}
 function applyColor(){
   const r=ralInfo();
@@ -791,6 +951,7 @@ function cleanParams(tpl,src){
 
 /* ---------- regenerate ---------- */
 function regen(fit){
+  if(S.mode==='prof'){regenProfile(fit);return;}
   $('err').hidden=true;let warns=[];
   if(S.mode==='tpl'){
     const p=cleanParams(S.tpl,S.params);
@@ -824,6 +985,8 @@ function regen(fit){
   update();caption();
 }
 function caption(){
+  if(S.mode==='prof'){if(!CATALOG)return;const P=profNow();
+    $('facts').innerHTML=[`${P.f.name} ${P.z.label}`,`${fmt(S.prof.L)} מ״מ`,`${P.kg.toFixed(2)} ק״ג ליח׳`,P.bars?`${P.bars} מוטות ${P.stock/1000} מ׳`:''].filter(Boolean).map(x=>`<bdi>${x}</bdi>`).join(' · ');return;}
   const d=S.data;if(!d)return;const b=S.box||{W:d.W,D:d.H,H:S.t};
   const dims=S.geom&&S.geom.faces?`${fmt(b.W)}×${fmt(b.D)}×${fmt(b.H)}`:`${fmt(d.W)}×${fmt(d.H)}`;
   const kg=d.bbArea*S.t*DENSITY[S.mat];
@@ -833,6 +996,7 @@ function caption(){
 function money(n){return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});}
 let shownTotal=0,tick=0;
 function update(){
+  if(S.mode==='prof'){updateProfile();return;}
   const d=S.data;if(!d)return;
   const kg=d.bbArea*S.t*DENSITY[S.mat],netM2=d.net/1e6,r=ralInfo();
   const cut=d.cut*PRICE.cutPerMm,pier=d.pierces*PRICE.perPierce,wt=kg*PRICE.perKg[S.mat],bend=S.bends*PRICE.perBend,paint=S.paint&&r?netM2*2*PRICE.paintPerM2:0;
@@ -844,6 +1008,16 @@ function update(){
     ['חומר',`${kg.toFixed(2)} ק״ג`,wt],
     ['כיפוף',S.bends?`${S.bends} × ₪${PRICE.perBend}`:'ללא',bend],
     ['צבע',S.paint&&r?`RAL ${r.k}`:'ללא',paint]];
+  showPrice(rows,unit,total);
+}
+function updateProfile(){
+  if(!CATALOG||!S.profSec)return;
+  const P=profNow(),r=ralInfo(),m2=P.sec.perim*S.prof.L/1e6;
+  const wt=P.kg*PRICE.prof.perKg[S.mat],cut=PRICE.prof.perCut,paint=S.paint&&r?m2*PRICE.paintPerM2:0;
+  const unit=Math.ceil(wt+cut+paint),total=unit*S.qty;
+  showPrice([['חומר',`${P.kg.toFixed(2)} ק״ג × ₪${PRICE.prof.perKg[S.mat]}`,wt],['חיתוך לאורך','1 חיתוך',cut],['צבע',S.paint&&r?`RAL ${r.k} · ${m2.toFixed(2)} מ״ר`:'ללא',paint]],unit,total);
+}
+function showPrice(rows,unit,total){
   $('priceBody').innerHTML=rows.map(([a,b,v])=>`<tr><td>${a}<span class="det">${b}</span></td><td>${money(Math.round(v*100)/100)}</td></tr>`).join('')+
     ''; $('unitLine').textContent=`${money(unit)} ליח׳ × ${S.qty}`; caption();
   S.unit=unit;S.total=total;
@@ -858,6 +1032,7 @@ $('gallery').addEventListener('click',e=>{const b=e.target.closest('.tile');if(!
 function markPreset(id){document.querySelectorAll('.tile').forEach(b=>b.setAttribute('aria-pressed',b.dataset.preset===id));}
 function choosePreset(id){
   const pr=PRESETS.find(p=>p.id===id);S.preset=id;markPreset(id);
+  if(id==='prof'){openProfile();return;}
   if(!pr.tpl){$('file').click();return;}
   if(pr.t)setThk(pr.t);
   S.desc='';setTemplate(pr.tpl,pr.p,true);
@@ -884,7 +1059,15 @@ $('pgrid').addEventListener('input',e=>{
   S.params[k]=v;if(id[0]==='r')$('p_'+k).value=v;else{const r=$('r_'+k);if(+r.max<v)r.max=v;r.value=v;}
   syncShow();clearTimeout(rt);rt=setTimeout(()=>regen(false),id[0]==='r'?40:180);});
 $('pgrid').addEventListener('change',e=>{const k=e.target.id.slice(2);if(!TEMPLATES[S.tpl].fields.find(x=>x.k===k))return;S.params=cleanParams(S.tpl,S.params);$('p_'+k).value=S.params[k];$('r_'+k).value=S.params[k];regen(false);});
-function setMode(m){S.mode=m;$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('dxfBox').hidden=m!=='tpl';if(m==='dxf'){$('paramsTitle').textContent='כיפוף';S.bends=parseInt($('bends').value)||0;markPreset('dxf');regen(true);}}
+function setMode(m){S.mode=m;$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('paramsProf').hidden=m!=='prof';$('dxfBox').hidden=m!=='tpl';$('thkWrap').hidden=m==='prof';
+  syncMats();if(m==='prof'){$('paramsTitle').textContent='פרופיל';cancelAnimationFrame(foldAnim);S.geom=null;}if(m==='dxf'){$('paramsTitle').textContent='כיפוף';S.bends=parseInt($('bends').value)||0;markPreset('dxf');regen(true);}}
+
+$('famChips').addEventListener('click',e=>{const b=e.target.closest('.fam');if(!b)return;const f=CATALOG.find(x=>x.id===b.dataset.fam);S.prof.fam=f.id;S.prof.size=f.def;syncMats();renderProfForm();regen(true);});
+$('profSize').addEventListener('change',e=>{S.prof.size=e.target.value;regen(false);});
+let plt;
+$('profLr').addEventListener('input',e=>{S.prof.L=+e.target.value;$('profL').value=S.prof.L;clearTimeout(plt);plt=setTimeout(()=>regen(false),40);});
+$('profL').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isFinite(v)||v<20)return;S.prof.L=Math.min(12000,v);const r=$('profLr');if(+r.max<v)r.max=v;r.value=v;clearTimeout(plt);plt=setTimeout(()=>regen(false),200);});
+$('profL').addEventListener('change',e=>{S.prof.L=Math.min(12000,Math.max(20,parseFloat(e.target.value)||1000));e.target.value=S.prof.L;const r=$('profLr');if(+r.max<S.prof.L)r.max=S.prof.L;r.value=S.prof.L;regen(false);});
 
 /* ---------- tabs ---------- */
 function showTab(){}
@@ -893,7 +1076,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()
 /* ---------- material / qty / thickness / view ---------- */
 function setThk(t){const sel=$('thk');if(![...sel.options].some(o=>+o.value===t)){const op=new Option(String(t),String(t));const after=[...sel.options].find(o=>+o.value>t);sel.add(op,after||null);}
   sel.value=[...sel.options].find(o=>+o.value===t).value;S.t=t;}
-$('mat').addEventListener('change',e=>{S.mat=e.target.value;applyColor();update();caption();});
+$('mat').addEventListener('change',e=>{S.mat=e.target.value;applyColor();if(S.mode==='prof')regen(false);else{update();caption();}});
 $('thk').addEventListener('change',e=>{S.t=+e.target.value;regen(false);});
 ['qty','bends'].forEach(id=>$(id).addEventListener('input',e=>{S[id]=Math.max(+e.target.min,parseInt(e.target.value)||0);if(id==='bends'&&S.mode==='dxf')regen(false);else update();}));
 document.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{const[id,dv]=b.dataset.step.split(':');const el=$(id);S[id]=Math.max(+el.min,(parseInt(el.value)||0)+ +dv);el.value=S[id];if(id==='bends'&&S.mode==='dxf')regen(false);else update();}));
@@ -935,6 +1118,7 @@ const TPL_DOC=`- plate: flat rectangle. W length, H width, r corner radius (0 = 
 - angle: L angle with one 90° bend (also a shelf bracket or wall bracket). A lying leg (outside), B standing leg (outside), L length, hn holes in EACH leg spaced along the length, hd hole diameter.
 - channel: U channel, two 90° bends (cable tray, gutter, cover). W base width (outside), H side height (outside), L length, hn holes in the base, hd.
 - zed: Z profile, two bends in opposite directions. a bottom flange, h height, c top flange, L length, hn holes in each flange, hd.
+- profile: a standard steel section cut to length (tube, angle, beam, flat bar, round bar). Instead of "params" give "profile":{"family":"shs|rhs|chs|angle|flat|round|upn|ipe|hea|heb","size":"...","length":1200}. Size ids: shs "BxBxt" (40x40x3), rhs "BxHxt" (60x40x3), chs "Dxt" (48.3x3.2), angle "axt" (50x5), flat "bxt" (40x5), round "d" (12), upn/ipe/hea/heb the nominal height (200). length = one piece in mm. Ignore "thickness" for profiles.
 - tray: open tray or box with four sides bent up (planter, drip tray, tool tray). L length, W width, H wall height (outside), hn holes in the bottom, hd.`;
 const CHAT_RULES=`You are the friendly ordering assistant of an Israeli laser-cutting and sheet-metal bending shop. You chat in Hebrew with customers who cannot read technical drawings and turn what they say (and any sketch or photo) into a part that is drawn live on their screen in 3D.
 Templates (choose ONE; all lengths in millimetres, numbers only; fill ALL params of the chosen template):
@@ -962,14 +1146,14 @@ function bubble(role,text,img,built){
 }
 function typingBubble(){const m=document.createElement('div');m.className='msg bot';m.innerHTML='<span class="typing" aria-label="חושב"><i></i><i></i><i></i></span>';$('chat').appendChild(m);$('chat').scrollTop=$('chat').scrollHeight;return m;}
 function quick(list){const q=$('quick');q.innerHTML='';(list||[]).filter(s=>typeof s==='string'&&s.trim()).slice(0,4).forEach(s=>{const b=document.createElement('button');b.type='button';b.className='qr';b.textContent=s.slice(0,60);b.onclick=()=>send(s);q.appendChild(b);});}
-function currentDesign(){return S.mode==='tpl'?{template:S.tpl,params:cleanParams(S.tpl,S.params),material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'}:{template:'uploaded DXF file',material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'};}
+function currentDesign(){if(S.mode==='prof')return{template:'profile',profile:{family:S.prof.fam,size:S.prof.size,length:S.prof.L},material:S.mat,qty:S.qty,ral:S.paint?S.ral:'none'};return S.mode==='tpl'?{template:S.tpl,params:cleanParams(S.tpl,S.params),material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'}:{template:'uploaded DXF file',material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'};}
 async function send(text,img){
   text=(text||'').trim();if(!text&&!img)return;
   if(ctl)return;
   $('msg').value='';quick([]);
   bubble('me',text||(img?'':''),img);
   if(!sampleFn){
-    const r=localParse(text);applyDesign(r,true);
+    const r=await localDesign(text);await applyDesign(r,true);
     bubble('bot','בניתי. בדקו את המידות.',null,'✓');
     return;
   }
@@ -981,25 +1165,26 @@ async function send(text,img){
     const r=await sampleFn.json(input,opts);tb.remove();
     turns.push({role:'user',content:userTurn},{role:'assistant',content:JSON.stringify({reply:r&&r.reply,design:r&&r.design||null})});
     let built=null;
-    if(r&&r.design&&TEMPLATES[r.design.template]){applyDesign(r.design,false);built='✓';}
+    if(r&&r.design&&(TEMPLATES[r.design.template]||r.design.template==='profile')){await applyDesign(r.design,false);built='✓';}
     bubble('bot',typeof r?.reply==='string'&&r.reply?r.reply:'עודכן.',null,built);
     quick(r&&r.suggestions);
   }catch(e){
     tb.remove();const c=e&&e.code;
     if(c==='cancelled')return;
     if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(c)){sampleFn=null;$('photoBtn').hidden=true;$('sketchBtn').hidden=true;$('sketch').hidden=true;
-      const r=localParse(text);applyDesign(r,true);bubble('bot','בניתי. בדקו את המידות.',null,'✓');}
+      const r=await localDesign(text);await applyDesign(r,true);bubble('bot','בניתי. בדקו את המידות.',null,'✓');}
     else bubble('bot',{images_unavailable:'לא הצלחתי לקרוא את התמונה. נסו לכתוב את המידות במילים.',image_rejected:'התמונה לא נקלטה. נסו JPG או PNG אחר.',rate_limited:'יש עומס רגעי. נסו שוב בעוד דקה.',invalid_json:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות, למשל 20 על 30 ס״מ.',empty_completion:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות.',refused:'אני יכול לעזור רק עם חלקי פח לחיתוך וכיפוף.',session_expired:'צריך להתחבר מחדש ולנסות שוב.'}[c]||'משהו השתבש בחיבור. שלחו שוב.');
   }finally{ctl=null;$('send').disabled=false;$('stop').hidden=true;}
 }
-function applyDesign(d,local){
+async function applyDesign(d,local){
   const num=v=>{const n=Number(v);return isFinite(n)&&n>0?n:null;};
   if(['steel','galv','ss','al'].includes(d.material)){S.mat=d.material;$('mat').value=d.material;}
-  const t=num(d.thickness);if(t&&t<=30)setThk(Math.round(t*10)/10);
+  const t=num(d.thickness);if(t&&t<=30&&d.template!=='profile')setThk(Math.round(t*10)/10);
   const q=num(d.qty);if(q){S.qty=Math.min(100000,Math.round(q));$('qty').value=S.qty;}
   if(d.ral==='none')setPaint(false);
   else{const ral=d.ral!=null?String(d.ral).replace(/\D/g,''):'';if(ral){S.ral=ral;$('ral').value=ral;setPaint(true);updateRal();}}
   if(local)S.desc=$('msg').value||S.desc;
+  if(d.template==='profile'){await openProfile(d.profile||{});return;}
   const pr=PRESETS.find(p=>p.tpl===d.template);S.preset=pr?pr.id:'';markPreset(S.preset);
   setTemplate(d.template,d.params||{},true);
 }
@@ -1029,6 +1214,11 @@ $('sendSketch').addEventListener('click',()=>{if(!strokes.length)return;pad.toBl
 new ResizeObserver(()=>sizePad()).observe(pad);
 
 // very small rule-based parser when Claude is not available
+async function localDesign(raw){
+  await getCatalog();const r=localParse(raw),p=profileParse(raw);
+  if(p){r.template='profile';r.profile=p;}
+  return r;
+}
 function localParse(raw){
   let s=' '+raw.replace(/[×✕*]/g,'x').replace(/[״"”'׳]/g,'').replace(/[,;]/g,' ').replace(/[øØ⌀]/g,' ø ').toLowerCase()+' ';
   const N='(\\d+(?:\\.\\d+)?)',rx=x=>new RegExp(x,'i'),take=re=>{const m=s.match(re);if(m)s=s.replace(m[0],' ');return m;};
@@ -1062,6 +1252,7 @@ function localParse(raw){
 
 /* ---------- order ---------- */
 function shapeLine(){
+  if(S.mode==='prof'){const P=profNow();return `פרופיל: ${P.f.name} ${P.z.label} (${P.f.std}), אורך ${fmt(S.prof.L)} מ״מ`;}
   if(S.mode==='dxf')return `קובץ: ${S.file}${S.bends?`, ${S.bends} כיפופים`+($('bendNote').value?` (${$('bendNote').value})`:''):''}`;
   const T=TEMPLATES[S.tpl];
   return `צורה: ${T.name}. `+T.fields.filter(f=>!f.show||f.show(S.params)).map(f=>`${f.l} ${fmt(S.params[f.k])}`).join(', ');
@@ -1074,7 +1265,7 @@ $('orderForm').addEventListener('submit',e=>{e.preventDefault();
   const r=ralInfo();
   const txt=['הזמנה חדשה',`שם: ${$('cName').value}`,`טלפון: ${$('cPhone').value}`,
    S.desc?`בקשת הלקוח: ${S.desc}`:'',shapeLine(),
-   `חומר: ${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,`פריסה: ${fmt(S.data.W)} × ${fmt(S.data.H)} מ״מ`,`כמות: ${S.qty}`,
+   ...(S.mode==='prof'?[`חומר: ${MAT_NAME[S.mat]}`,`משקל: ${profNow().kg.toFixed(2)} ק״ג ליח׳`]:[`חומר: ${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,`פריסה: ${fmt(S.data.W)} × ${fmt(S.data.H)} מ״מ`]),`כמות: ${S.qty}`,
    `צבע: ${S.paint&&r?`RAL ${r.k} ${r.name}, ${$('finish').selectedOptions[0].text}`:'ללא'}`,
    `מחיר ליחידה: ${money(S.unit)}`,`סה״כ: ${money(S.total)} לפני מע״מ`,$('cNote').value?`הערות: ${$('cNote').value}`:''].filter(Boolean).join('\n');
   $('orderText').textContent=txt;
