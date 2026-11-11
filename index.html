@@ -1,0 +1,1078 @@
+<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>הזמנת חיתוך וכיפוף</title><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: workshop bench — big 3D viewer on one side, an assistant + numbered order steps in a narrow panel beside it */
+:root{
+  --bg:#EBEFF2; --surface:#FFFFFF; --surface-2:#F4F6F8; --ink:#141C24; --muted:#5A6874; --line:#D2D9DF;
+  --accent:#E06A12; --accent-ink:#1A0E04; --accent-soft:#FBE7D6;
+  --viewer-bg:#DCE2E7; --grid-a:#B9C3CB; --grid-b:#CBD3D9; --dim:#C2410C; --edge:#2A333B; --bend:#0B66C3;
+  --ok:#1F7A4D; --warn:#A15C00; --paper:#FFFFFF; --pen:#1B2530; --ref:#7A8794;
+  --f-display:"Rubik","Assistant",system-ui,sans-serif;
+  --f-body:"Assistant",system-ui,"Segoe UI",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1419; --surface:#151D25; --surface-2:#1A242E; --ink:#E4EAEF; --muted:#93A2AE; --line:#263340;
+  --accent:#F28A30; --accent-ink:#1A0E04; --accent-soft:#3A2614;
+  --viewer-bg:#0A0F14; --grid-a:#2A3743; --grid-b:#1B252F; --dim:#F7A35C; --edge:#0B1015; --bend:#5AA9F5;
+  --ok:#5BC98F; --warn:#E8A84A; --paper:#FFFFFF; --pen:#1B2530; --ref:#8FA0AE; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1419; --surface:#151D25; --surface-2:#1A242E; --ink:#E4EAEF; --muted:#93A2AE; --line:#263340;
+  --accent:#F28A30; --accent-ink:#1A0E04; --accent-soft:#3A2614;
+  --viewer-bg:#0A0F14; --grid-a:#2A3743; --grid-b:#1B252F; --dim:#F7A35C; --edge:#0B1015; --bend:#5AA9F5;
+  --ok:#5BC98F; --warn:#E8A84A; --paper:#FFFFFF; --pen:#1B2530; --ref:#8FA0AE; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1300px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;max-width:64ch}
+.chips-top{display:flex;gap:6px;flex-wrap:wrap}
+.chip-top{font-size:12px;letter-spacing:.04em;padding:4px 10px;border:1px solid var(--line);border-radius:99px;color:var(--muted);background:var(--surface)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:20px;align-items:start}
+@media (max-width:940px){.layout{grid-template-columns:1fr}}
+.stage{position:sticky;top:12px;min-width:0}
+@media (max-width:940px){.stage{position:static}}
+#viewer{position:relative;height:min(620px,72vh);border-radius:var(--r);overflow:hidden;background:var(--viewer-bg);border:1px solid var(--line);touch-action:none}
+@media (max-width:940px){#viewer{height:58vh;min-height:320px;max-height:460px}}
+#viewer canvas{display:block;width:100%;height:100%}
+.labels{position:absolute;inset:0;pointer-events:none}
+.dim-label{position:absolute;transform:translate(-50%,-50%);font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--dim);background:var(--surface);border:1px solid var(--dim);padding:1px 6px;border-radius:4px;white-space:nowrap;direction:ltr}
+.dim-label.ref{color:var(--muted);border-color:var(--line);font-family:var(--f-body);direction:rtl}
+.toolbar{position:absolute;top:10px;inset-inline-start:10px;display:flex;gap:4px;flex-wrap:wrap;max-width:calc(100% - 20px)}
+.tb{font:600 13px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+.tb:hover{border-color:var(--accent)}
+.tb[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.hint{position:absolute;bottom:12px;inset-inline-end:12px;font-size:12px;color:var(--muted)}
+@media (max-width:700px){.hint{display:none}}
+.filebadge{position:absolute;top:50px;inset-inline-end:12px;font:500 12px var(--f-mono);color:var(--muted);direction:ltr}
+.legend{position:absolute;top:50px;inset-inline-start:12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:22px;border-top:2px dashed var(--bend)}
+.foldbar{position:absolute;bottom:10px;inset-inline-start:10px;display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 10px;width:min(380px,calc(100% - 20px))}
+.foldbar span{font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.foldbar input{flex:1;min-width:0;padding:0;border:0;background:none;accent-color:var(--accent);height:24px}
+.play{flex:none;width:32px;height:32px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer;display:grid;place-items:center}
+.play svg{width:14px;height:14px;fill:currentColor}
+.drop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 18%,transparent);border:2px dashed var(--accent);font:700 18px var(--f-display);color:var(--ink)}
+.err{position:absolute;inset:auto 12px 56px 12px;background:var(--surface);border:1px solid var(--warn);color:var(--warn);padding:10px 12px;border-radius:8px;font-weight:600}
+.caption{margin:14px 2px 0;font:500 17px/1.5 var(--f-display);text-wrap:pretty}
+.caption small{display:block;font:600 12px var(--f-body);color:var(--muted);letter-spacing:.04em;margin-bottom:2px}
+.specs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin:12px 0 0;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+@media (max-width:600px){.specs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.spec{background:var(--surface);padding:10px 12px;min-width:0}
+.spec dt{font-size:12px;color:var(--muted);letter-spacing:.03em}
+.spec dd{margin:0;font:500 15px var(--f-mono);font-variant-numeric:tabular-nums;direction:ltr;text-align:right;overflow-wrap:anywhere}
+.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.block{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.block h2{display:flex;align-items:center;gap:10px;margin:0;font:700 16px var(--f-display)}
+.step{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:var(--surface);font:500 12px var(--f-mono);flex:none}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:600;min-width:0}
+input,select,textarea{font:16px var(--f-body);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+textarea{resize:vertical;line-height:1.45}
+.num{font-family:var(--f-mono);direction:ltr;text-align:right}
+.btn{font:700 15px var(--f-body);border-radius:8px;padding:10px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.small{font-size:13px;padding:6px 10px}
+.upload{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fname{font:500 13px var(--f-mono);color:var(--muted);direction:ltr;overflow-wrap:anywhere;min-width:0}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:38px;height:38px;font:700 18px var(--f-mono);border-radius:7px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer}
+.stepper input{width:70px;text-align:center}
+.toggle{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--accent)}
+.note{font-size:12px;color:var(--muted);margin:0}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:3px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px}
+.seg button{font:600 13.5px var(--f-body);border:0;border-radius:6px;padding:7px 4px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .14)}
+.pane{display:flex;flex-direction:column;gap:10px}
+/* chat */
+.chat{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding:2px 2px 4px;scroll-behavior:smooth}
+.msg{max-width:88%;padding:8px 11px;border-radius:12px;font-size:14.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.bot{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);border-start-start-radius:4px}
+.msg.me{align-self:flex-end;background:var(--accent-soft);border-start-end-radius:4px}
+.msg img{display:block;max-width:180px;width:100%;border-radius:6px;margin-top:6px;background:var(--paper)}
+.msg .built{display:block;margin-top:6px;font-size:12px;font-weight:700;color:var(--ok)}
+.typing{display:inline-flex;gap:4px;align-items:center;height:18px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.qr{font:600 13px var(--f-body);padding:5px 10px;border:1px solid var(--accent);border-radius:99px;background:transparent;color:var(--ink);cursor:pointer;text-align:start}
+.qr:hover{background:var(--accent-soft)}
+.composer{display:flex;gap:6px;align-items:flex-end}
+.composer textarea{min-height:44px;max-height:140px;flex:1}
+.composer .btn{flex:none;padding:10px 12px}
+.ctools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.photo-chip{display:inline-flex;gap:6px;align-items:center;font:500 12px var(--f-mono);direction:ltr;padding:3px 8px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2)}
+.photo-chip button{border:0;background:none;color:var(--muted);cursor:pointer;font:700 14px var(--f-body);padding:0 2px}
+.sketch{display:flex;flex-direction:column;gap:6px}
+.sketch canvas{width:100%;height:240px;background:var(--paper);border:1px solid var(--line);border-radius:8px;touch-action:none;display:block;cursor:crosshair}
+.sketch .row2{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+/* gallery */
+.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:600 13px/1.25 var(--f-body);cursor:pointer;text-align:center}
+.tile svg{width:48px;height:36px;color:var(--muted);fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.tile:hover{border-color:var(--accent)}
+.tile[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);background:var(--surface)}
+.tile[aria-pressed="true"] svg{color:var(--accent)}
+/* params */
+.pgrid{display:flex;flex-direction:column;gap:10px}
+.fld{display:flex;flex-direction:column;gap:2px}
+.fld .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:13px;font-weight:600;color:var(--muted)}
+.fld .h{font-size:11.5px;color:var(--muted);font-weight:400;line-height:1.3}
+.fld .ctl{display:flex;gap:10px;align-items:center}
+.fld input[type=range]{flex:1;min-width:0;padding:0;border:0;background:none;accent-color:var(--accent);height:24px}
+.fld input[type=number]{width:92px;flex:none;padding:6px 8px}
+.bendinfo{font-size:13px;color:var(--muted)}
+.bendinfo b{color:var(--ink)}
+.warns{display:flex;flex-direction:column;gap:6px}
+.warns:empty{display:none}
+.warns div{font-size:13px;font-weight:600;color:var(--warn);padding-inline-start:10px;border-inline-start:3px solid var(--warn)}
+.okline{font-size:13px;font-weight:600;color:var(--ok)}
+details.dxfout summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+details.dxfout pre{font:12px/1.4 var(--f-mono);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:8px;max-height:160px;overflow:auto;margin:8px 0;text-align:left}
+/* color */
+.ral-line{display:flex;gap:10px;align-items:center}
+.swatch{flex:none;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2)}
+.ral-name{font-size:13px;color:var(--muted)}
+.ral-name.bad{color:var(--warn);font-weight:600}
+.ral-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ral-chip{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--f-mono);padding:3px 8px 3px 4px;border:1px solid var(--line);border-radius:99px;background:var(--surface-2);color:var(--ink);cursor:pointer;direction:ltr}
+.ral-chip i{width:14px;height:14px;border-radius:50%;border:1px solid var(--line)}
+.ral-chip[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.paint-opts{display:flex;flex-direction:column;gap:10px}
+/* price */
+table.price{width:100%;border-collapse:collapse;font-size:14px}
+table.price td{padding:5px 0;border-bottom:1px dashed var(--line)}
+table.price td:last-child{text-align:left;font-family:var(--f-mono);font-variant-numeric:tabular-nums;direction:ltr;white-space:nowrap}
+table.price .det{display:block;font-size:12px;color:var(--muted)}
+table.price tr.tot td{border-bottom:0;padding-top:10px;font:700 20px var(--f-display)}
+table.price tr.tot td:last-child{font:500 22px var(--f-mono);color:var(--accent)}
+.done{background:var(--surface-2);border:1px solid var(--ok);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.done h3{margin:0;color:var(--ok);font:700 15px var(--f-display)}
+.done pre{margin:0;white-space:pre-wrap;font:13px/1.55 var(--f-body);max-height:260px;overflow:auto}
+.tb:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.ral-chip:focus-visible,.seg button:focus-visible,.tile:focus-visible,.qr:focus-visible,.play:focus-visible,details summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* simplified layout */
+header.top{margin-bottom:14px}
+h1{font-size:22px}
+.facts{margin:10px 2px 0;font:500 14px var(--f-mono);color:var(--muted);direction:rtl;font-variant-numeric:tabular-nums}
+.foldbar{gap:8px}
+.fic{width:22px;height:16px;flex:none;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linejoin:round}
+.composer{align-items:center}
+.composer textarea{min-height:44px;resize:none}
+.ibtn{flex:none;width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.ibtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ibtn.send{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.ibtn:disabled{opacity:.5}
+.ibtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.ctools:empty{display:none}
+.gallery{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.tile{padding:8px 2px 6px;font-size:12px}
+.tile svg{width:38px;height:28px}
+.chat{max-height:300px}
+.block h2{font-size:15px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:10px;align-items:end}
+@media (max-width:420px){.row3{grid-template-columns:1fr 1fr}.row3 label:last-child{grid-column:1/-1}}
+.stepper button{width:34px;height:38px}
+.stepper input{width:100%;min-width:44px}
+.colorrow{display:flex;flex-direction:column;gap:8px}
+.ral-line{gap:8px}
+.ral-line .swatch{width:38px;height:38px}
+.ral-line input{width:90px;flex:none}
+.ral-line select{flex:1}
+.pricebox{gap:12px}
+.total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.total span{font:500 32px var(--f-mono);color:var(--accent);direction:ltr;font-variant-numeric:tabular-nums}
+.total small{font-size:13px;color:var(--muted)}
+.pdet summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600}
+.btn.big{font-size:17px;padding:13px}
+.oform{display:flex;flex-direction:column;gap:8px}
+.fld .h{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div class="wrap" dir="rtl" lang="he">
+  <header class="top"><h1>חיתוך וכיפוף</h1></header>
+
+  <div class="layout">
+    <section class="stage" aria-label="תצוגת תלת-ממד">
+      <div id="viewer">
+        <div class="labels" id="labels"></div>
+        <div class="toolbar" role="toolbar" aria-label="תצוגה">
+          <button class="tb" id="dimToggle" aria-pressed="true">מידות</button>
+          <button class="tb" id="refToggle" aria-pressed="false">השוואת גודל</button>
+          <button class="tb" data-view="iso" aria-pressed="false" aria-label="איפוס תצוגה">⟲</button>
+        </div>
+        <div class="legend" id="legend" hidden><i></i>קו כיפוף</div>
+        <div class="filebadge" id="fileBadge"></div>
+        <div class="foldbar" id="foldbar" hidden>
+          <button class="play" id="playFold" type="button" aria-label="הפעלת אנימציית כיפוף"><svg viewBox="0 0 10 10"><path d="M8 1 L8 9 L1 5 Z"/></svg></button>
+          <svg class="fic" viewBox="0 0 24 16" aria-hidden="true"><path d="M2 12 H22"/></svg>
+          <input type="range" id="fold" min="0" max="100" value="100" aria-label="פרוס או מכופף">
+          <svg class="fic" viewBox="0 0 24 16" aria-hidden="true"><path d="M3 3 V13 H21 V3"/></svg>
+        </div>
+        <div class="drop" id="drop" hidden>שחררו כאן קובץ DXF</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <div class="facts" id="facts"></div>
+    </section>
+
+    <aside class="panel">
+      <section class="block">
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="quick" id="quick"></div>
+        <div class="sketch" id="sketch" hidden>
+          <canvas id="pad" aria-label="משטח ציור"></canvas>
+          <div class="row2">
+            <button class="btn small primary" type="button" id="sendSketch">שליחה</button>
+            <button class="btn small" type="button" id="undoSketch">ביטול</button>
+            <button class="btn small" type="button" id="clearSketch">ניקוי</button>
+          </div>
+        </div>
+        <div class="composer">
+          <textarea id="msg" rows="1" placeholder="מה בונים?"></textarea>
+          <button class="ibtn" type="button" id="sketchBtn" hidden aria-label="ציור באצבע" title="ציור"><svg viewBox="0 0 24 24"><path d="M4 20 L5 15 L16 4 L20 8 L9 19 Z M14 6 L18 10"/></svg></button>
+          <button class="ibtn" type="button" id="photoBtn" hidden aria-label="צירוף תמונה" title="תמונה"><svg viewBox="0 0 24 24"><path d="M3 7 H7 L9 4 H15 L17 7 H21 V19 H3 Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+          <button class="ibtn send" type="button" id="send" aria-label="שליחה"><svg viewBox="0 0 24 24"><path d="M20 12 H5 M11 6 L5 12 L11 18"/></svg></button>
+          <input type="file" id="photo" accept="image/*" hidden>
+        </div>
+        <div class="ctools"><span id="photoChip"></span><button class="btn small" type="button" id="stop" hidden>עצירה</button></div>
+        <div class="gallery" id="gallery"></div>
+        <input type="file" id="file" accept=".dxf" hidden><span id="fname" hidden></span>
+      </section>
+
+      <section class="block">
+        <h2 id="paramsTitle">מידות</h2>
+        <div id="paramsTpl"><div class="pgrid" id="pgrid"></div></div>
+        <div id="paramsDxf" hidden>
+          <label class="f">כיפופים
+            <div class="stepper"><button type="button" data-step="bends:-1" aria-label="פחות">−</button><input id="bends" class="num" type="number" min="0" value="0" inputmode="numeric"><button type="button" data-step="bends:1" aria-label="יותר">+</button></div>
+          </label>
+          <input id="bendNote" type="text" placeholder="איך לכופף?">
+        </div>
+        <div class="bendinfo" id="bendInfo"></div>
+        <div class="warns" id="warns"></div>
+        <div id="okLine" hidden></div>
+        <details class="dxfout" id="dxfBox">
+          <summary>DXF</summary>
+          <pre id="dxfText" dir="ltr"></pre>
+          <button class="btn small" type="button" id="copyDxf">העתקת DXF</button>
+        </details>
+      </section>
+
+      <section class="block">
+        <div class="row3">
+          <label class="f">חומר
+            <select id="mat"><option value="steel">ברזל</option><option value="galv">מגולוון</option><option value="ss">נירוסטה</option><option value="al">אלומיניום</option></select>
+          </label>
+          <label class="f">עובי
+            <select id="thk" class="num"><option>1</option><option>1.5</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option><option>10</option><option>12</option></select>
+          </label>
+          <label class="f">כמות
+            <div class="stepper"><button type="button" data-step="qty:-1" aria-label="פחות">−</button><input id="qty" class="num" type="number" min="1" value="10" inputmode="numeric"><button type="button" data-step="qty:1" aria-label="יותר">+</button></div>
+          </label>
+        </div>
+        <div class="colorrow">
+          <label class="toggle"><input type="checkbox" id="paint" checked> צבע</label>
+          <div class="paint-opts" id="paintOpts">
+            <div class="ral-chips" id="ralChips"></div>
+            <div class="ral-line">
+              <div class="swatch" id="swatch"></div>
+              <input id="ral" class="num" type="text" inputmode="numeric" value="7016" list="ralList" autocomplete="off" aria-label="מספר RAL">
+              <select id="finish" aria-label="גימור"><option value="matte">מט</option><option value="satin">חצי מבריק</option><option value="gloss">מבריק</option></select>
+            </div>
+            <div class="ral-name" id="ralName"></div>
+          </div>
+        </div>
+        <datalist id="ralList"></datalist>
+      </section>
+
+      <section class="block pricebox">
+        <div class="total"><span id="totCell">₪0</span><small id="unitLine"></small></div>
+        <details class="pdet"><summary>פירוט</summary><table class="price"><tbody id="priceBody"></tbody></table></details>
+        <button class="btn primary big" type="button" id="orderBtn">הזמנה</button>
+        <form id="orderForm" class="oform" novalidate hidden>
+          <div class="row">
+            <input id="cName" type="text" autocomplete="name" placeholder="שם" aria-label="שם">
+            <input id="cPhone" class="num" type="tel" autocomplete="tel" placeholder="טלפון" aria-label="טלפון">
+          </div>
+          <input id="cNote" type="text" placeholder="הערות" aria-label="הערות">
+          <button class="btn primary" type="submit">שליחה</button>
+          <div class="done" id="done" hidden>
+            <pre id="orderText"></pre>
+            <button class="btn" type="button" id="copy">העתקה לוואטסאפ</button>
+          </div>
+        </form>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+document.documentElement.lang='he';
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.abs(n-Math.round(n))<0.05?String(Math.round(n)):n.toFixed(1);
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- pricing config ---------- */
+// Price (₪) per part = cut_mm × 0.02 + pierces × 3 + gross_kg × rate + bends + paint; rounded up per unit
+const PRICE={cutPerMm:0.02,perPierce:3,perKg:{steel:9,galv:12,ss:30,al:32},perBend:6,paintPerM2:70};
+const DENSITY={steel:0.00000785,galv:0.00000785,ss:0.00000793,al:0.0000027}; // kg/mm³
+const MAT_NAME={steel:'ברזל שחור',galv:'מגולוון',ss:'נירוסטה',al:'אלומיניום'};
+const RAW={steel:{c:'#5F666C',m:.35,r:.55},galv:{c:'#A7AFB3',m:.45,r:.4},ss:{c:'#C4C9CC',m:.55,r:.28},al:{c:'#CDD2D6',m:.4,r:.38}};
+
+/* ---------- RAL table (approx. sRGB) ---------- */
+const RAL={1003:['#F9A800','צהוב איתות'],1013:['#E3D9C6','לבן צדפה'],1015:['#E6D2B5','שנהב בהיר'],1021:['#F6B600','צהוב לפתית'],1023:['#F7B500','צהוב תנועה'],
+2004:['#E25303','כתום טהור'],3000:['#A72920','אדום להבה'],3003:['#8D1D2C','אדום אודם'],3005:['#5E2028','אדום יין'],3020:['#BB1E10','אדום תנועה'],
+5002:['#00387B','כחול אולטרמרין'],5005:['#005387','כחול איתות'],5010:['#004F7C','כחול ג׳נטיאנה'],5012:['#0089B6','כחול בהיר'],5015:['#007CB0','כחול שמיים'],5017:['#005B8C','כחול תנועה'],
+6005:['#0F4336','ירוק טחב'],6009:['#27352A','ירוק אשוח'],6018:['#48A43F','ירוק צהבהב'],6029:['#006F3D','ירוק מנטה'],
+7001:['#8C969D','אפור כסוף'],7016:['#383E42','אפור אנתרציט'],7021:['#2F3234','אפור שחור'],7024:['#474A50','אפור גרפיט'],7035:['#CBD0CC','אפור בהיר'],7037:['#7F8274','אפור אבק'],7040:['#9DA3A6','אפור חלון'],7042:['#8F9695','אפור תנועה A'],
+8017:['#45302B','חום שוקולד'],9001:['#E9E0D2','קרם'],9002:['#D7D5CB','לבן אפרפר'],9003:['#ECECE7','לבן איתות'],9005:['#0E0E10','שחור'],9006:['#A1A1A0','אלומיניום לבן'],9007:['#878581','אלומיניום אפור'],9010:['#F1ECE1','לבן טהור'],9011:['#27292B','שחור גרפיט'],9016:['#F1F0EA','לבן תנועה']};
+const POPULAR=[9005,9016,7016,7035,9006,3020,5010,6005];
+
+
+/* ---------- DXF parsing ---------- */
+function parseDXF(text){
+  const L=text.split(/\r?\n/), P=[];
+  for(let i=0;i+1<L.length;i+=2){const c=parseInt(L[i].trim(),10);if(isNaN(c)){i-=1;continue;}P.push([c,L[i+1].trim()]);}
+  let scale=1;
+  for(let i=0;i<P.length-1;i++){if(P[i][0]===9&&P[i][1]==='$INSUNITS'){const u=+P[i+1][1];scale={1:25.4,2:304.8,4:1,5:10,6:1000}[u]||1;break;}}
+  let start=P.findIndex((p,i)=>p[0]===2&&p[1]==='ENTITIES'&&P[i-1]&&P[i-1][1]==='SECTION');
+  if(start<0) throw new Error('לא נמצא אזור ENTITIES בקובץ');
+  const ents=[];let cur=null;
+  for(let i=start+1;i<P.length;i++){const[c,v]=P[i];if(c===0){if(v==='ENDSEC')break;cur={type:v,g:[]};ents.push(cur);}else if(cur)cur.g.push([c,v]);}
+  return {ents,scale};
+}
+const gv=(e,c,d=0)=>{const x=e.g.find(p=>p[0]===c);return x?parseFloat(x[1]):d;};
+const gs=(e,c)=>{const x=e.g.find(p=>p[0]===c);return x?x[1]:'';};
+const isBendLayer=e=>/^(bend|bends|כיפוף)$/i.test(gs(e,8));
+function bulgeArc(p1,p2,bu){
+  const th=4*Math.atan(bu),dx=p2.x-p1.x,dy=p2.y-p1.y,d=Math.hypot(dx,dy);
+  if(d<1e-9)return[{x:p2.x,y:p2.y}];
+  const a=Math.atan2(dy,dx),k=(d/2)/Math.tan(th/2);
+  const cx=(p1.x+p2.x)/2-Math.sin(a)*k,cy=(p1.y+p2.y)/2+Math.cos(a)*k;
+  const r=Math.hypot(p1.x-cx,p1.y-cy),s=Math.atan2(p1.y-cy,p1.x-cx);
+  const n=Math.max(2,Math.ceil(Math.abs(th)/(Math.PI/36))),out=[];
+  for(let i=1;i<=n;i++){const t=s+th*i/n;out.push({x:cx+r*Math.cos(t),y:cy+r*Math.sin(t)});}
+  out[out.length-1]={x:p2.x,y:p2.y};return out;
+}
+function polyPts(vs,closed){
+  const pts=[{x:vs[0].x,y:vs[0].y}],n=vs.length,segs=closed?n:n-1;
+  for(let i=0;i<segs;i++){const a=vs[i],b=vs[(i+1)%n];if(Math.abs(a.b)>1e-9)pts.push(...bulgeArc(a,b,a.b));else pts.push({x:b.x,y:b.y});}
+  if(closed)pts.pop();return pts;
+}
+function arcPts(cx,cy,r,s,e){
+  let sw=e-s;while(sw<=0)sw+=360;const n=Math.max(2,Math.ceil(sw/5)),out=[];
+  for(let i=0;i<=n;i++){const t=(s+sw*i/n)*Math.PI/180;out.push({x:cx+r*Math.cos(t),y:cy+r*Math.sin(t)});}return out;
+}
+function entitiesToPaths(ents){
+  const paths=[],bends=[];
+  for(let i=0;i<ents.length;i++){
+    const e=ents[i];
+    if(isBendLayer(e)){if(e.type==='LINE')bends.push([gv(e,10),gv(e,20),gv(e,11),gv(e,21)]);continue;}
+    if(e.type==='LINE')paths.push({pts:[{x:gv(e,10),y:gv(e,20)},{x:gv(e,11),y:gv(e,21)}],closed:false});
+    else if(e.type==='CIRCLE'){const cx=gv(e,10),cy=gv(e,20),r=gv(e,40);const pts=arcPts(cx,cy,r,0,360);pts.pop();paths.push({pts,closed:true,circle:r*2});}
+    else if(e.type==='ARC')paths.push({pts:arcPts(gv(e,10),gv(e,20),gv(e,40),gv(e,50),gv(e,51)),closed:false});
+    else if(e.type==='LWPOLYLINE'){
+      const vs=[];for(const[c,v]of e.g){if(c===10)vs.push({x:+v,y:0,b:0});else if(c===20&&vs.length)vs[vs.length-1].y=+v;else if(c===42&&vs.length)vs[vs.length-1].b=+v;}
+      if(vs.length>1){const cl=(gv(e,70)&1)===1;paths.push({pts:polyPts(vs,cl),closed:cl});}
+    }else if(e.type==='POLYLINE'){
+      const cl=(gv(e,70)&1)===1,vs=[];let j=i+1;
+      while(j<ents.length&&ents[j].type==='VERTEX'){vs.push({x:gv(ents[j],10),y:gv(ents[j],20),b:gv(ents[j],42)});j++;}
+      i=j;if(vs.length>1)paths.push({pts:polyPts(vs,cl),closed:cl});
+    }else if(e.type==='ELLIPSE'){
+      const cx=gv(e,10),cy=gv(e,20),mx=gv(e,11),my=gv(e,21),k=gv(e,40,1);let s=gv(e,41,0),t=gv(e,42,Math.PI*2);
+      while(t<=s)t+=Math.PI*2;const full=Math.abs(t-s-Math.PI*2)<1e-6,n=72,pts=[];
+      for(let q=0;q<=n;q++){const u=s+(t-s)*q/n;pts.push({x:cx+mx*Math.cos(u)-k*my*Math.sin(u),y:cy+my*Math.cos(u)+k*mx*Math.sin(u)});}
+      if(full)pts.pop();paths.push({pts,closed:full});
+    }else if(e.type==='SPLINE'){
+      const fit=[],ctl=[];let last=null;
+      for(const[c,v]of e.g){if(c===11){last={x:+v,y:0};fit.push(last);}else if(c===21&&last)last.y=+v;else if(c===10){last={x:+v,y:0};ctl.push(last);}else if(c===20&&last)last.y=+v;}
+      const pts=fit.length>1?fit:ctl;const cl=(gv(e,70)&1)===1;if(pts.length>1)paths.push({pts:cl?pts.slice(0,near(pts[0],pts[pts.length-1],1e-6)?-1:undefined):pts,closed:cl});
+    }
+  }
+  return {paths,bends};
+}
+function near(a,b,t){return Math.abs(a.x-b.x)<=t&&Math.abs(a.y-b.y)<=t;}
+function chain(open,tol){
+  const pool=open.map(p=>p.pts.slice()),out=[];
+  const grow=cur=>{let g=true;while(g){g=false;const end=cur[cur.length-1];if(cur.length>2&&near(end,cur[0],tol))return cur;
+    for(let i=0;i<pool.length;i++){const p=pool[i];
+      if(near(end,p[0],tol))cur=cur.concat(p.slice(1));else if(near(end,p[p.length-1],tol))cur=cur.concat(p.slice().reverse().slice(1));else continue;
+      pool.splice(i,1);g=true;break;}}return cur;};
+  while(pool.length){let cur=grow(pool.shift());if(!(cur.length>2&&near(cur[cur.length-1],cur[0],tol))){cur=grow(cur.reverse());}
+    const cl=cur.length>2&&near(cur[cur.length-1],cur[0],tol);if(cl)cur.pop();out.push({pts:cur,closed:cl});}
+  return out;
+}
+const area=p=>{let a=0;for(let i=0;i<p.length;i++){const q=p[i],r=p[(i+1)%p.length];a+=q.x*r.y-r.x*q.y;}return a/2;};
+const plen=(p,cl)=>{let s=0;for(let i=1;i<p.length;i++)s+=Math.hypot(p[i].x-p[i-1].x,p[i].y-p[i-1].y);if(cl)s+=Math.hypot(p[0].x-p[p.length-1].x,p[0].y-p[p.length-1].y);return s;};
+function inside(pt,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>pt.y)!==(b.y>pt.y)&&pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x)c=!c;}return c;}
+const bbox=p=>{let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;for(const q of p){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y);}return{x0,y0,x1,y1,w:x1-x0,h:y1-y0};};
+
+function analyse(text){
+  const {ents,scale}=parseDXF(text);
+  let {paths,bends}=entitiesToPaths(ents);
+  paths.forEach(p=>p.pts=p.pts.map(q=>({x:q.x*scale,y:q.y*scale})));
+  bends=bends.map(b=>b.map(v=>v*scale));
+  if(paths.length===0)throw new Error('לא נמצאו קווים בקובץ. ייתכן שהשרטוט שמור בתוך בלוק (INSERT). יש לפרק אותו (Explode) ולשמור שוב.');
+  const closed=paths.filter(p=>p.closed),chained=chain(paths.filter(p=>!p.closed),0.05);
+  const loops=closed.concat(chained.filter(c=>c.closed)),openCount=chained.filter(c=>!c.closed).length;
+  let cut=0;paths.forEach(p=>cut+=plen(p.pts,p.closed));
+  loops.forEach(l=>{l.a=area(l.pts);l.abs=Math.abs(l.a);});
+  loops.sort((a,b)=>b.abs-a.abs);
+  loops.forEach((l,i)=>{l.parent=null;for(let j=i-1;j>=0;j--){if(loops[j].abs>l.abs&&inside(l.pts[0],loops[j].pts)){l.parent=loops[j];break;}}});
+  const depth=l=>{let d=0,p=l.parent;while(p){d++;p=p.parent;}return d;};
+  const parts=[];
+  loops.forEach(l=>{l.d=depth(l);if(l.d%2===0){l.holes=[];parts.push(l);}});
+  loops.forEach(l=>{if(l.d%2===1)l.parent.holes.push(l);});
+  if(!parts.length)throw new Error('לא נמצא קו מתאר סגור. בדקו שקו החוץ של החלק סגור ושאין רווחים בין הקווים.');
+  let net=0,bbArea=0;
+  parts.forEach(p=>{const b=bbox(p.pts);bbArea+=b.w*b.h;net+=p.abs-p.holes.reduce((s,h)=>s+h.abs,0);});
+  const all=bbox(parts.flatMap(p=>p.pts));
+  return {parts,cut,pierces:loops.length+openCount,holes:loops.length-parts.length,net,bbArea,W:all.w,H:all.h,openCount,bends};
+}
+
+
+/* ---------- sheet-metal rules ---------- */
+// inner bend radius = thickness, K-factor 0.33, 90° bends
+const KF=0.33, RI=t=>t, OSSB=t=>RI(t)+t, BA=t=>Math.PI/2*(RI(t)+KF*t);
+const minFlange=t=>Math.max(8,Math.ceil(4*t));
+const autoOff=d=>Math.round(Math.max(1.5*d,d/2+8));
+
+/* ---------- templates ---------- */
+const F=(k,l,v,o={})=>Object.assign({k,l,v,min:0,max:3000,u:'מ״מ'},o);
+const TEMPLATES={
+  plate:{name:'פלטה',bends:0,fields:[
+    F('W','אורך',300,{min:10,smax:1500}),F('H','רוחב',200,{min:10,smax:1000}),
+    F('r','רדיוס פינות',0,{max:500,smax:100,h:'0 = פינות חדות'}),
+    F('hn','מספר חורים',4,{max:40,smax:12,int:1,u:'',h:'1 במרכז · 2 בקצוות · 4 בפינות · יותר = שתי שורות'}),
+    F('hd','קוטר חור',12,{min:1,max:500,smax:60,show:p=>p.hn>0,h:'לבורג M10 חור 11, ל-M12 חור 13'}),
+    F('off','מרכז חור עד הקצה',25,{min:2,max:1000,smax:150,show:p=>p.hn>1}),
+    F('center','חור במרכז',0,{max:2000,smax:400,h:'קוטר. 0 = בלי'})]},
+  disc:{name:'עיגול',bends:0,fields:[
+    F('D','קוטר חיצוני',250,{min:10,smax:1200}),F('Di','חור פנימי',0,{smax:1000,h:'קוטר. 0 = עיגול מלא'}),
+    F('hn','חורים על מעגל',6,{max:40,smax:16,int:1,u:''}),
+    F('hd','קוטר חור',14,{min:1,max:500,smax:60,show:p=>p.hn>0}),
+    F('pcd','קוטר מעגל החורים',200,{min:1,smax:1100,show:p=>p.hn>0,h:'המרחק בין שני חורים נגדיים'})]},
+  angle:{name:'זווית L',bends:1,fields:[
+    F('A','כנף שוכבת',60,{min:5,smax:300,h:'מידה חיצונית'}),F('B','כנף עומדת',80,{min:5,smax:300,h:'מידה חיצונית'}),F('L','אורך',300,{min:10,smax:3000}),
+    F('hn','חורים בכל כנף',2,{max:30,smax:10,int:1,u:''}),F('hd','קוטר חור',9,{min:1,max:200,smax:40,show:p=>p.hn>0})]},
+  channel:{name:'תעלת U',bends:2,fields:[
+    F('W','רוחב בסיס',100,{min:5,smax:500,h:'מידה חיצונית'}),F('H','גובה דפנות',50,{min:5,smax:300,h:'מידה חיצונית'}),F('L','אורך',500,{min:10,smax:3000}),
+    F('hn','חורים בבסיס',3,{max:30,smax:10,int:1,u:''}),F('hd','קוטר חור',11,{min:1,max:200,smax:40,show:p=>p.hn>0})]},
+  zed:{name:'פרופיל Z',bends:2,fields:[
+    F('a','כנף תחתונה',40,{min:5,smax:300}),F('h','גובה',80,{min:5,smax:400}),F('c','כנף עליונה',40,{min:5,smax:300}),F('L','אורך',400,{min:10,smax:3000}),
+    F('hn','חורים בכל כנף',2,{max:30,smax:10,int:1,u:''}),F('hd','קוטר חור',9,{min:1,max:200,smax:40,show:p=>p.hn>0})]},
+  tray:{name:'מגש / קופסה',bends:4,fields:[
+    F('L','אורך',300,{min:20,smax:1500}),F('W','רוחב',200,{min:20,smax:1000}),F('H','גובה דופן',40,{min:5,smax:300,h:'מידה חיצונית'}),
+    F('hn','חורים בתחתית',0,{max:40,smax:12,int:1,u:''}),F('hd','קוטר חור',8,{min:1,max:200,smax:40,show:p=>p.hn>0})]},
+};
+const ICON={
+  plate:'<rect x="4" y="6" width="40" height="24" rx="3"/><circle cx="10" cy="12" r="2"/><circle cx="38" cy="12" r="2"/><circle cx="10" cy="24" r="2"/><circle cx="38" cy="24" r="2"/>',
+  base:'<rect x="9" y="3" width="30" height="30"/><circle cx="14" cy="8" r="2"/><circle cx="34" cy="8" r="2"/><circle cx="14" cy="28" r="2"/><circle cx="34" cy="28" r="2"/><rect x="18" y="12" width="12" height="12" stroke-dasharray="3 2"/>',
+  disc:'<circle cx="24" cy="18" r="15"/><circle cx="24" cy="8" r="2"/><circle cx="32.7" cy="13" r="2"/><circle cx="32.7" cy="23" r="2"/><circle cx="24" cy="28" r="2"/><circle cx="15.3" cy="23" r="2"/><circle cx="15.3" cy="13" r="2"/>',
+  ring:'<circle cx="24" cy="18" r="15"/><circle cx="24" cy="18" r="7"/>',
+  angle:'<path d="M10 4 V32 H40 V27 H15 V4 Z"/>',
+  channel:'<path d="M5 6 V32 H43 V6 H38 V27 H10 V6 Z"/>',
+  zed:'<path d="M4 25 H19 V5 H44 V10 H24 V30 H4 Z"/>',
+  tray:'<path d="M6 14 L24 6 L42 14 V24 L24 32 L6 24 Z"/><path d="M6 14 L24 22 L42 14 M24 22 V32"/>',
+  dxf:'<path d="M13 3 H30 L37 10 V33 H13 Z M30 3 V10 H37"/><path d="M18 19 H32 M18 24 H32 M18 29 H27"/>'
+};
+const PRESETS=[
+  {id:'plate',label:'פלטה',tpl:'plate',p:{W:300,H:200,r:10,hn:4,hd:10,off:20,center:0}},
+  {id:'base',label:'עיגון',tpl:'plate',p:{W:200,H:200,r:0,hn:4,hd:14,off:25,center:0},t:8},
+  {id:'disc',label:'עיגול',tpl:'disc',p:{D:250,Di:0,hn:6,hd:14,pcd:200}},
+  {id:'ring',label:'טבעת',tpl:'disc',p:{D:120,Di:60,hn:0,hd:10,pcd:90}},
+  {id:'angle',label:'זווית',tpl:'angle',p:{A:60,B:80,L:300,hn:2,hd:9}},
+  {id:'channel',label:'תעלה',tpl:'channel',p:{W:100,H:50,L:500,hn:3,hd:11}},
+  {id:'zed',label:'Z',tpl:'zed',p:{a:40,h:80,c:40,L:400,hn:2,hd:9}},
+  {id:'tray',label:'מגש',tpl:'tray',p:{L:300,W:200,H:40,hn:0,hd:8}},
+  {id:'dxf',label:'DXF',tpl:null}
+];
+
+/* ---------- geometry builders: {flat:{outline,holes,bends}, faces, hinge, warns} ---------- */
+function placeHoles(W,H,n,d,off){
+  const out=[],long=W>=H,along=(k,len)=>k===1?[len/2]:Array.from({length:k},(_,i)=>off+(len-2*off)*i/(k-1));
+  if(!n)return out;
+  if(n===1)out.push({x:W/2,y:H/2,d});
+  else if(n===2){if(long)out.push({x:off,y:H/2,d},{x:W-off,y:H/2,d});else out.push({x:W/2,y:off,d},{x:W/2,y:H-off,d});}
+  else if(n===4)[[off,off],[W-off,off],[W-off,H-off],[off,H-off]].forEach(([x,y])=>out.push({x,y,d}));
+  else if(n%2===0){const k=n/2;if(long)along(k,W).forEach(x=>out.push({x,y:off,d},{x,y:H-off,d}));else along(k,H).forEach(y=>out.push({x:off,y,d},{x:W-off,y,d}));}
+  else if(long)along(n,W).forEach(x=>out.push({x,y:H/2,d}));else along(n,H).forEach(y=>out.push({x:W/2,y,d}));
+  return out;
+}
+const alongL=(n,L,d)=>{if(!n)return[];const off=Math.max(autoOff(d),Math.min(40,L/(2*n)));return n===1?[L/2]:Array.from({length:n},(_,i)=>off+(L-2*off)*i/(n-1));};
+function rectHolesOk(holes,x0,y0,x1,y1){return holes.every(h=>h.x-h.d/2>=x0+1&&h.x+h.d/2<=x1-1&&h.y-h.d/2>=y0+1&&h.y+h.d/2<=y1-1);}
+function overlaps(holes){for(let i=0;i<holes.length;i++)for(let j=i+1;j<holes.length;j++)if(Math.hypot(holes[i].x-holes[j].x,holes[i].y-holes[j].y)<(holes[i].d+holes[j].d)/2+1)return true;return false;}
+const BUILD={
+  plate(p,t){
+    const w=[],r=Math.min(p.r,Math.min(p.W,p.H)/2-0.01);if(p.r>r+0.02)w.push('רדיוס הפינות הוקטן למקסימום.');
+    const holes=placeHoles(p.W,p.H,p.hn,p.hd,p.off);
+    if(p.center>0)holes.push({x:p.W/2,y:p.H/2,d:p.center});
+    if(!rectHolesOk(holes,0,0,p.W,p.H))w.push('חור יוצא מהפלטה.');
+    if(overlaps(holes))w.push('חורים חופפים.');
+    return {flat:{outline:{kind:'rrect',W:p.W,H:p.H,r:Math.max(0,r)},holes,bends:[]},faces:null,warns:w};
+  },
+  disc(p,t){
+    const w=[],R=p.D/2,holes=[];
+    if(p.Di>0){if(p.Di>=p.D-2)w.push('החור הפנימי גדול מדי.');holes.push({x:R,y:R,d:p.Di});}
+    if(p.hn>0){if(p.hn===1&&!p.Di)holes.push({x:R,y:R,d:p.hd});
+      else for(let i=0;i<p.hn;i++){const a=Math.PI/2+2*Math.PI*i/p.hn;holes.push({x:R+p.pcd/2*Math.cos(a),y:R+p.pcd/2*Math.sin(a),d:p.hd});}}
+    if(!holes.every(h=>Math.hypot(h.x-R,h.y-R)+h.d/2<=R-1+1e-6))w.push('חור יוצא מהעיגול.');
+    if(overlaps(holes))w.push('חורים חופפים.');
+    return {flat:{outline:{kind:'circle',cx:R,cy:R,r:R},holes,bends:[]},faces:null,warns:w};
+  },
+  angle(p,t){return strip(t,p.L,[{len:p.B,h:p.hn},{len:p.A,h:p.hn}],p.hd,1,[true],ho=>[
+    face([0,0,0],[1,0,0],[0,0,1],[0,1,0],p.A,p.L,ho[1],true,false,t),
+    face([0,0,0],[0,1,0],[0,0,1],[1,0,0],p.B,p.L,ho[0],true,false,t)]);},
+  channel(p,t){return strip(t,p.L,[{len:p.H,h:0},{len:p.W,h:p.hn},{len:p.H,h:0}],p.hd,1,[true,true],ho=>[
+    face([0,0,0],[0,1,0],[0,0,1],[1,0,0],p.H,p.L,[],true,false,t),
+    face([0,0,0],[1,0,0],[0,0,1],[0,1,0],p.W,p.L,ho[1],true,true,t),
+    face([p.W-t,0,0],[0,1,0],[0,0,1],[1,0,0],p.H,p.L,[],true,false,t)]);},
+  zed(p,t){return strip(t,p.L,[{len:p.a,h:p.hn},{len:p.h,h:0},{len:p.c,h:p.hn}],p.hd,0,[true,false],ho=>[
+    face([0,0,0],[1,0,0],[0,0,1],[0,1,0],p.a,p.L,ho[0],false,true,t),
+    face([p.a-t,0,0],[0,1,0],[0,0,1],[1,0,0],p.h,p.L,[],true,true,t),
+    face([p.a-t,p.h-t,0],[1,0,0],[0,0,1],[0,1,0],p.c,p.L,ho[2],true,false,t)]);},
+  tray(p,t){
+    const w=[],o=OSSB(t),ba=BA(t),fH=p.H-o,fL=p.L-2*o,fW=p.W-2*o,e=ba+fH,X=fL+2*e,Y=fW+2*e,h2=ba/2;
+    if(p.H<minFlange(t))w.push(`דופן נמוכה מדי. מינימום ${minFlange(t)} מ״מ.`);
+    const pts=[[e,0],[e+fL,0],[e+fL,e],[X,e],[X,e+fW],[e+fL,e+fW],[e+fL,Y],[e,Y],[e,e+fW],[0,e+fW],[0,e],[e,e]].map(([x,y])=>({x,y}));
+    const bends=[[e-h2,e,e-h2,e+fW],[e+fL+h2,e,e+fL+h2,e+fW],[e,e-h2,e+fL,e-h2],[e,e+fW+h2,e+fL,e+fW+h2]];
+    const bh=placeHoles(fL,fW,p.hn,p.hd,autoOff(p.hd));
+    const holes=bh.map(h=>({x:h.x+e,y:h.y+e,d:h.d}));
+    if(!rectHolesOk(bh,0,0,fL,fW))w.push('חור קרוב מדי לכיפוף.');
+    holeBendCheck(holes,bends,t,w);
+    const faces=[
+      {O:[0,0,0],u:[1,0,0],v:[0,0,1],n:[0,1,0],w:p.L,h:p.W,holes:bh.map(h=>({u:h.x+o,v:h.y+o,d:h.d}))},
+      {O:[0,0,0],u:[1,0,0],v:[0,1,0],n:[0,0,1],w:p.L,h:p.H,holes:[]},
+      {O:[0,0,p.W-t],u:[1,0,0],v:[0,1,0],n:[0,0,1],w:p.L,h:p.H,holes:[]},
+      {O:[0,0,t],u:[0,0,1],v:[0,1,0],n:[1,0,0],w:p.W-2*t,h:p.H,holes:[]},
+      {O:[p.L-t,0,t],u:[0,0,1],v:[0,1,0],n:[1,0,0],w:p.W-2*t,h:p.H,holes:[]}];
+    const hinge={root:0,panels:[
+      {rect:[e-h2,e-h2,e+fL+h2,e+fW+h2],parent:-1},
+      {rect:[0,e,e-h2,e+fW],parent:0,axis:bends[0],up:true},
+      {rect:[e+fL+h2,e,X,e+fW],parent:0,axis:bends[1],up:true},
+      {rect:[e,0,e+fL,e-h2],parent:0,axis:bends[2],up:true},
+      {rect:[e,e+fW+h2,e+fL,Y],parent:0,axis:bends[3],up:true}]};
+    w.push('__note:פינות פתוחות.');
+    return {flat:{outline:{kind:'poly',pts},holes,bends},faces,hinge,warns:w};
+  }
+};
+function face(O,u,v,n,w,h,holeList,bend0,bend1,t){
+  const f=w-(bend0?OSSB(t):0)-(bend1?OSSB(t):0),uc=(bend0?OSSB(t):0)+f/2;
+  return {O,u,v,n,w,h,holes:holeList.map(H=>({u:uc,v:H.v,d:H.d}))};
+}
+// legs: outer sizes left→right in the flat strip; anchor: leg that stays on the ground; ups[j]: bend j folds toward the top face
+function strip(t,L,legs,hd,anchor,ups,mkFaces){
+  const w=[],o=OSSB(t),ba=BA(t),n=legs.length;
+  const f=legs.map((g,i)=>g.len-o*((i>0)+(i<n-1)));
+  legs.forEach(g=>{if(g.len<minFlange(t))w.push(`כנף ${fmt(g.len)} קצרה מדי. מינימום ${minFlange(t)} מ״מ.`);});
+  let s=0;const starts=[],bends=[],bx=[];
+  f.forEach((fi,i)=>{starts.push(s);s+=fi;if(i<n-1){bx.push(s+ba/2);bends.push([s+ba/2,0,s+ba/2,L]);s+=ba;}});
+  const Wf=s,holes=[],ho=legs.map(()=>[]);
+  legs.forEach((g,i)=>{alongL(g.h,L,hd).forEach(y=>{holes.push({x:starts[i]+f[i]/2,y,d:hd});ho[i].push({v:y,d:hd});});
+    if(g.h&&hd>f[i]-2)w.push('החור רחב מהכנף.');});
+  holeBendCheck(holes,bends,t,w);
+  const panels=legs.map((g,i)=>{const rect=[i?bx[i-1]:0,0,i<n-1?bx[i]:Wf,L];
+    if(i===anchor)return{rect,parent:-1};
+    if(i>anchor)return{rect,parent:i-1,axis:bends[i-1],up:ups[i-1]};
+    return{rect,parent:i+1,axis:bends[i],up:ups[i]};});
+  return {flat:{outline:{kind:'poly',pts:[{x:0,y:0},{x:Wf,y:0},{x:Wf,y:L},{x:0,y:L}]},holes,bends},faces:mkFaces(ho),hinge:{root:anchor,panels},warns:w};
+}
+function holeBendCheck(holes,bends,t,w){
+  const lim=BA(t)/2+2*t;
+  if(holes.some(h=>bends.some(([x1,y1,x2,y2])=>(x1===x2?Math.abs(h.x-x1):Math.abs(h.y-y1))-h.d/2<lim)))
+    w.push(`חור קרוב מדי לכיפוף (מינימום ${fmt(lim)} מ״מ).`);
+}
+function flatDXF(fl){
+  const f=n=>String(+n.toFixed(4)),o=['0','SECTION','2','HEADER','9','$ACADVER','1','AC1009','9','$INSUNITS','70','4','0','ENDSEC','0','SECTION','2','ENTITIES'];
+  const line=(a,b,c,d,ly='0')=>o.push('0','LINE','8',ly,'10',f(a),'20',f(b),'30','0','11',f(c),'21',f(d),'31','0');
+  const arc=(x,y,r,s,e)=>o.push('0','ARC','8','0','10',f(x),'20',f(y),'30','0','40',f(r),'50',f(s),'51',f(e));
+  const circ=(x,y,r)=>o.push('0','CIRCLE','8','0','10',f(x),'20',f(y),'30','0','40',f(r));
+  const ol=fl.outline;
+  if(ol.kind==='rrect'){const{W,H,r}=ol;
+    if(r>0.01){line(r,0,W-r,0);arc(W-r,r,r,270,360);line(W,r,W,H-r);arc(W-r,H-r,r,0,90);line(W-r,H,r,H);arc(r,H-r,r,90,180);line(0,H-r,0,r);arc(r,r,r,180,270);}
+    else{line(0,0,W,0);line(W,0,W,H);line(W,H,0,H);line(0,H,0,0);}}
+  else if(ol.kind==='circle')circ(ol.cx,ol.cy,ol.r);
+  else ol.pts.forEach((a,i)=>{const b=ol.pts[(i+1)%ol.pts.length];line(a.x,a.y,b.x,b.y);});
+  fl.holes.forEach(h=>circ(h.x,h.y,h.d/2));
+  fl.bends.forEach(b=>line(...b,'BEND'));
+  o.push('0','ENDSEC','0','EOF');return o.join('\n');
+}
+
+/* ---------- 3D scene ---------- */
+const viewer=$('viewer'),labelsEl=$('labels');
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+viewer.prepend(renderer.domElement);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(38,1,1,100000);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.12;
+scene.add(new THREE.HemisphereLight(0xffffff,0x3d4a56,.85));
+const d1=new THREE.DirectionalLight(0xffffff,.85);d1.position.set(1,2.2,1.4);scene.add(d1);
+const d2=new THREE.DirectionalLight(0xffffff,.3);d2.position.set(-1.5,1,-1);scene.add(d2);
+const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const group=new THREE.Group();scene.add(group);
+let dimLines=null,dimLabels=[],box=null,viewBox=null,showDims=true,pivots=[],partObj=null;
+const mat=new THREE.MeshStandardMaterial({color:0x888888,metalness:.3,roughness:.5,side:THREE.DoubleSide});
+const edgeMat=new THREE.LineBasicMaterial({color:0x222222,transparent:true,opacity:.55});
+const dimMat=new THREE.LineBasicMaterial({color:0xC2410C});
+const bendMat=new THREE.LineDashedMaterial({color:0x0B66C3,dashSize:6,gapSize:4});
+const refMat=new THREE.MeshStandardMaterial({color:0x7A8794,transparent:true,opacity:.35,roughness:.9,metalness:0,side:THREE.DoubleSide});
+const paperMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,metalness:0,side:THREE.DoubleSide});
+const V=a=>new THREE.Vector3(...a);
+function addMesh(container,g){container.add(new THREE.Mesh(g,mat));container.add(new THREE.LineSegments(new THREE.EdgesGeometry(g,25),edgeMat));}
+
+function clearScene(){group.clear();dimLabels.forEach(l=>l.el.remove());dimLabels=[];pivots=[];partObj=null;}
+function sceneKind(){const bent=!!(S.geom&&S.geom.faces);if(!bent)return'flat';return S.fold>=1?'folded':S.fold<=0?'flat':'hinge';}
+function build(){
+  clearScene();if(!S.data)return;
+  const kind=sceneKind();S.scene=kind;
+  const part=new THREE.Group();partObj=part;
+  if(kind==='folded'){
+    S.geom.faces.forEach(f=>{
+      const sh=new THREE.Shape([new THREE.Vector2(0,0),new THREE.Vector2(f.w,0),new THREE.Vector2(f.w,f.h),new THREE.Vector2(0,f.h)]);
+      f.holes.forEach(h=>{const pa=new THREE.Path();pa.absarc(h.u,h.v,h.d/2,0,Math.PI*2,true);sh.holes.push(pa);});
+      const g=new THREE.ExtrudeGeometry(sh,{depth:S.t,bevelEnabled:false,curveSegments:28});
+      const m=new THREE.Matrix4().makeBasis(V(f.u),V(f.v),V(f.n));m.setPosition(V(f.O));g.applyMatrix4(m);g.computeVertexNormals();
+      addMesh(part,g);
+    });
+  }else if(kind==='hinge'){
+    buildHinge(part);setFoldAngles(S.fold);
+  }else{
+    const t=S.t;
+    const shapes=S.data.parts.map(p=>{
+      let o=p.pts.map(q=>new THREE.Vector2(q.x,q.y));if(p.a<0)o.reverse();
+      const sh=new THREE.Shape(o);
+      p.holes.forEach(h=>{let hp=h.pts.map(q=>new THREE.Vector2(q.x,q.y));if(h.a>0)hp.reverse();sh.holes.push(new THREE.Path(hp));});
+      return sh;});
+    const geo=new THREE.ExtrudeGeometry(shapes,{depth:t,bevelEnabled:false,curveSegments:1});
+    geo.rotateX(-Math.PI/2);geo.computeVertexNormals();addMesh(part,geo);
+    if(S.data.bends.length){
+      const v=[];S.data.bends.forEach(([x1,y1,x2,y2])=>v.push(x1,t+0.3,-y1,x2,t+0.3,-y2));
+      const bg=new THREE.BufferGeometry();bg.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+      const bl=new THREE.LineSegments(bg,bendMat);bl.computeLineDistances();part.add(bl);
+    }
+  }
+  group.add(part);recentre();
+  box=new THREE.Box3().setFromObject(part);
+  const W=box.max.x-box.min.x,D=box.max.z-box.min.z,Hh=box.max.y-box.min.y;
+  const M=Math.max(W,D,Hh,S.data.W,S.data.H);
+  const step=M>800?50:10,size=Math.ceil(M*1.6/step)*step;
+  const grid=new THREE.GridHelper(size,Math.min(200,size/step),new THREE.Color(tok('--grid-a')),new THREE.Color(tok('--grid-b')));grid.position.y=-0.05;group.add(grid);
+  viewBox=box.clone();
+  if(kind!=='hinge'){
+    const off=Math.max(W,D,Hh)*.09,y=0.02,tk=off*.25,v=[];const L=(a,c)=>v.push(a[0],a[1],a[2],c[0],c[1],c[2]);
+    const zf=box.max.z+off,xr=box.max.x+off,tx=box.min.x-off*.6,tz=box.max.z;
+    L([box.min.x,y,box.max.z],[box.min.x,y,zf+tk]);L([box.max.x,y,box.max.z],[box.max.x,y,zf+tk]);L([box.min.x,y,zf],[box.max.x,y,zf]);
+    L([box.max.x,y,box.min.z],[xr+tk,y,box.min.z]);L([box.max.x,y,box.max.z],[xr+tk,y,box.max.z]);L([xr,y,box.min.z],[xr,y,box.max.z]);
+    L([box.min.x,0,tz],[tx-tk,0,tz]);L([box.min.x,Hh,tz],[tx-tk,Hh,tz]);L([tx,0,tz],[tx,Hh,tz]);
+    const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+    dimLines=new THREE.LineSegments(lg,dimMat);dimLines.visible=showDims;group.add(dimLines);
+    addLabel(fmt(W),new THREE.Vector3(0,y,zf));addLabel(fmt(D),new THREE.Vector3(xr,y,(box.min.z+box.max.z)/2));
+    addLabel(kind==='folded'?fmt(Hh):'t '+fmt(S.t),new THREE.Vector3(tx,Hh/2,tz));
+    S.box={W,D,H:Hh};
+    if(S.ref)addRef(W,D,Hh);
+  }
+  applyColor();applySceneTheme();
+  $('legend').hidden=!(S.data.bends.length&&kind==='flat');
+}
+function addRef(W,D,Hh){
+  const M=Math.max(W,D,Hh),gap=Math.max(60,M*.12);
+  if(M>700){
+    const fig=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(190,140,1450,24),refMat);body.position.y=725;
+    const head=new THREE.Mesh(new THREE.SphereGeometry(115,24,16),refMat);head.position.y=1620;
+    fig.add(body,head);const x=box.max.x+gap+200;fig.position.set(x,0,0);group.add(fig);
+    addLabel('אדם 1.75 מ׳',new THREE.Vector3(x,1820,0),'ref');
+    viewBox.union(new THREE.Box3(new THREE.Vector3(x-200,0,-200),new THREE.Vector3(x+200,1740,200)));
+  }else{
+    const g=new THREE.PlaneGeometry(297,210);g.rotateX(-Math.PI/2);
+    const sheet=new THREE.Mesh(g,paperMat);const x=box.max.x+gap+148.5;sheet.position.set(x,0.2,0);group.add(sheet);
+    const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),edgeMat);e.position.copy(sheet.position);group.add(e);
+    addLabel('דף A4',new THREE.Vector3(x,1,0),'ref');
+    viewBox.union(new THREE.Box3(new THREE.Vector3(x-148.5,0,-105),new THREE.Vector3(x+148.5,1,105)));
+  }
+}
+// hinge model: the flat blank split at the bend lines; each panel rotates about its bend line
+function buildHinge(part){
+  const hg=S.geom.hinge,t=S.t,fl=S.geom.flat;
+  const P=hg.panels.map(p=>Object.assign({},p,{holes:[],kids:[]}));
+  fl.holes.forEach(h=>{const i=P.findIndex(p=>h.x>=p.rect[0]-1e-6&&h.x<=p.rect[2]+1e-6&&h.y>=p.rect[1]-1e-6&&h.y<=p.rect[3]+1e-6);if(i>=0)P[i].holes.push(h);});
+  P.forEach((p,i)=>{if(p.parent>=0)P[p.parent].kids.push(i);});
+  const mk=(i,container)=>{
+    const p=P[i],[x0,y0,x1,y1]=p.rect;
+    const sh=new THREE.Shape([new THREE.Vector2(x0,y0),new THREE.Vector2(x1,y0),new THREE.Vector2(x1,y1),new THREE.Vector2(x0,y1)]);
+    p.holes.forEach(h=>{const pa=new THREE.Path();pa.absarc(h.x,h.y,h.d/2,0,Math.PI*2,true);sh.holes.push(pa);});
+    const g=new THREE.ExtrudeGeometry(sh,{depth:t,bevelEnabled:false,curveSegments:24});
+    g.rotateX(Math.PI/2);g.translate(0,t,0);g.computeVertexNormals();addMesh(container,g);
+    p.kids.forEach(ci=>{
+      const c=P[ci],[ax1,ay1,ax2,ay2]=c.axis,py=c.up?t:0;
+      const piv=V([ax1,py,ay1]),d=new THREE.Vector3(ax2-ax1,0,ay2-ay1).normalize();
+      const vx=(c.rect[0]+c.rect[2])/2-ax1,vz=(c.rect[1]+c.rect[3])/2-ay1;
+      let sgn=Math.sign(d.z*vx-d.x*vz)||1;if(!c.up)sgn=-sgn;
+      const pivot=new THREE.Group();pivot.position.copy(piv);
+      const inner=new THREE.Group();inner.position.copy(piv).negate();pivot.add(inner);container.add(pivot);
+      pivots.push({pivot,d,sgn});mk(ci,inner);
+    });
+  };
+  mk(hg.root,part);
+}
+function setFoldAngles(p){const a=p*Math.PI/2;pivots.forEach(q=>q.pivot.quaternion.setFromAxisAngle(q.d,q.sgn*a));}
+function recentre(){if(!partObj)return;partObj.position.set(0,0,0);partObj.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(partObj);partObj.position.set(-(b.min.x+b.max.x)/2,-b.min.y,-(b.min.z+b.max.z)/2);}
+function addLabel(txt,pos,cls){const el=document.createElement('div');el.className='dim-label'+(cls?' '+cls:'');el.textContent=txt;el.hidden=!showDims&&!cls;labelsEl.appendChild(el);dimLabels.push({el,pos});}
+let lastView='iso';
+function setView(kind){
+  const vb=viewBox||box;if(!vb)return;lastView=kind;
+  const c=vb.getCenter(new THREE.Vector3()),W=vb.max.x-vb.min.x,D=vb.max.z-vb.min.z,H=vb.max.y-vb.min.y,M=Math.max(W,D,H),d=M*1.75;
+  controls.target.set(c.x,H/2,c.z);
+  const p={iso:[d*.55,d*.72,d*.85],top:[0,d*1.15,0.001],front:[0,d*.12+H/2,d*1.1],side:[d*1.1,d*.12+H/2,0]}[kind];
+  camera.position.set(c.x+p[0],p[1],c.z+p[2]);controls.update();
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===kind));
+}
+function applySceneTheme(){scene.background=new THREE.Color(tok('--viewer-bg'));dimMat.color.set(tok('--dim'));edgeMat.color.set(tok('--edge'));bendMat.color.set(tok('--bend'));refMat.color.set(tok('--ref'));paperMat.color.set(tok('--paper'));}
+function resize(){const r=viewer.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(viewer);
+const v3=new THREE.Vector3();
+(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera);
+  const w=viewer.clientWidth,h=viewer.clientHeight;for(const l of dimLabels){if(l.el.hidden)continue;v3.copy(l.pos).project(camera);l.el.style.left=((v3.x+1)/2*w)+'px';l.el.style.top=((1-v3.y)/2*h)+'px';l.el.style.visibility=v3.z>1?'hidden':'visible';}
+})();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>build());
+new MutationObserver(()=>build()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- fold control ---------- */
+let foldAnim=0;
+function applyFold(p,fromSlider){
+  S.fold=Math.max(0,Math.min(1,p));if(!fromSlider)$('fold').value=Math.round(S.fold*100);
+  const k=sceneKind();
+  if(k==='hinge'&&S.scene==='hinge'){setFoldAngles(S.fold);recentre();}
+  else build();
+}
+function playFold(){
+  cancelAnimationFrame(foldAnim);
+  if(!(S.geom&&S.geom.faces))return;
+  if(REDUCED){applyFold(1);return;}
+  const t0=performance.now(),dur=1900,hold=450;
+  applyFold(0);
+  const step=now=>{const e=now-t0-hold;if(e<0){foldAnim=requestAnimationFrame(step);return;}
+    const x=Math.min(1,e/dur),p=x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;
+    applyFold(x>=1?1:Math.max(0.002,p));if(x<1)foldAnim=requestAnimationFrame(step);};
+  foldAnim=requestAnimationFrame(step);
+}
+$('fold').addEventListener('input',e=>{cancelAnimationFrame(foldAnim);applyFold(+e.target.value/100,true);});
+$('playFold').addEventListener('click',playFold);
+
+/* ---------- state ---------- */
+const S={mode:'tpl',tpl:'angle',preset:'angle',params:{},fold:1,scene:'',ref:false,data:null,geom:null,t:3,mat:'steel',qty:10,bends:0,paint:true,ral:'7016',finish:'matte',file:'',desc:'',dxfText:''};
+function ralInfo(){const k=String(S.ral).replace(/\D/g,'');return RAL[k]?{k,hex:RAL[k][0],name:RAL[k][1]}:null;}
+function applyColor(){
+  const r=ralInfo();
+  if(S.paint&&r){mat.color.set(r.hex);mat.metalness=.05;mat.roughness={matte:.85,satin:.5,gloss:.22}[S.finish];}
+  else{const m=RAW[S.mat];mat.color.set(m.c);mat.metalness=m.m;mat.roughness=m.r;}
+  mat.needsUpdate=true;
+}
+function cleanParams(tpl,src){
+  const out={};TEMPLATES[tpl].fields.forEach(f=>{let v=Number(src&&src[f.k]);if(!isFinite(v))v=f.v;v=Math.min(f.max,Math.max(f.min,v));if(f.int)v=Math.round(v);out[f.k]=v;});
+  return out;
+}
+
+/* ---------- regenerate ---------- */
+function regen(fit){
+  $('err').hidden=true;let warns=[];
+  if(S.mode==='tpl'){
+    const p=cleanParams(S.tpl,S.params);
+    S.geom=BUILD[S.tpl](p,S.t);warns=S.geom.warns;
+    S.dxfText=flatDXF(S.geom.flat);
+    try{S.data=analyse(S.dxfText);}catch(e){$('err').textContent=e.message;$('err').hidden=false;return;}
+    S.bends=TEMPLATES[S.tpl].bends;
+    $('dxfText').textContent=S.dxfText;
+  }else{
+    if(!S.dxfText)return;
+    try{S.data=analyse(S.dxfText);}catch(e){$('err').textContent=e.message;$('err').hidden=false;return;}
+    S.geom=null;
+    if(S.data.openCount)warns.push(`${S.data.openCount} קווים פתוחים בקובץ.`);
+  }
+  if(S.mode==='tpl'&&S.params.hn>0&&S.params.hd<S.t)warns.push(`חור קטן מהעובי.`);
+  if(S.bends>0&&S.t>8)warns.push('כיפוף מעל 8 מ״מ דורש אישור.');
+  const fw=S.data.W,fh=S.data.H;
+  if(Math.max(fw,fh)>3000||Math.min(fw,fh)>1500)warns.push('גדול מגיליון 3000×1500.');
+  const notes=warns.filter(w=>w.startsWith('__note:')).map(w=>w.slice(7));warns=warns.filter(w=>!w.startsWith('__note:'));
+  S.warns=warns;
+  $('warns').innerHTML='';warns.forEach(w=>{const d=document.createElement('div');d.textContent=w;$('warns').appendChild(d);});
+  $('okLine').hidden=warns.length>0;
+  const bi=$('bendInfo');
+  if(S.mode==='tpl'){
+    bi.innerHTML=S.bends?`${S.bends} כיפופים · 90°`:'';
+    if(notes.length)bi.innerHTML+=(bi.innerHTML?'<br>':'')+notes.join(' ');
+  }else bi.textContent='';
+  $('foldbar').hidden=!(S.geom&&S.geom.faces);
+  $('fileBadge').textContent=S.mode==='dxf'?S.file:'';
+  build();if(fit)setView('iso');else if(S.scene!=='hinge')setView(lastView);
+  update();caption();
+}
+function caption(){
+  const d=S.data;if(!d)return;const b=S.box||{W:d.W,D:d.H,H:S.t};
+  const dims=S.geom&&S.geom.faces?`${fmt(b.W)}×${fmt(b.D)}×${fmt(b.H)}`:`${fmt(d.W)}×${fmt(d.H)}`;
+  const kg=d.bbArea*S.t*DENSITY[S.mat];
+  $('facts').textContent=[`${dims} מ״מ`,`${kg.toFixed(1)} ק״ג`,S.bends?`${S.bends} כיפופים`:''].filter(Boolean).join(' · ');
+}
+/* ---------- price & specs ---------- */
+function money(n){return '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:0,maximumFractionDigits:2});}
+let shownTotal=0,tick=0;
+function update(){
+  const d=S.data;if(!d)return;
+  const kg=d.bbArea*S.t*DENSITY[S.mat],netM2=d.net/1e6,r=ralInfo();
+  const cut=d.cut*PRICE.cutPerMm,pier=d.pierces*PRICE.perPierce,wt=kg*PRICE.perKg[S.mat],bend=S.bends*PRICE.perBend,paint=S.paint&&r?netM2*2*PRICE.paintPerM2:0;
+  const unit=Math.ceil(cut+pier+wt+bend+paint),total=unit*S.qty;
+  const b=S.box||{W:d.W,D:d.H,H:S.t};
+  const rows=[
+    ['חיתוך',`${Math.round(d.cut).toLocaleString('en-US')} מ״מ`,cut],
+    ['מספר פריצות',`${d.pierces} × ₪${PRICE.perPierce}`,pier],
+    ['חומר',`${kg.toFixed(2)} ק״ג`,wt],
+    ['כיפוף',S.bends?`${S.bends} × ₪${PRICE.perBend}`:'ללא',bend],
+    ['צבע',S.paint&&r?`RAL ${r.k}`:'ללא',paint]];
+  $('priceBody').innerHTML=rows.map(([a,b,v])=>`<tr><td>${a}<span class="det">${b}</span></td><td>${money(Math.round(v*100)/100)}</td></tr>`).join('')+
+    ''; $('unitLine').textContent=`${money(unit)} ליח׳ × ${S.qty}`; caption();
+  S.unit=unit;S.total=total;
+  cancelAnimationFrame(tick);const from=shownTotal,t0=performance.now();
+  const run=now=>{const x=REDUCED?1:Math.min(1,(now-t0)/450);shownTotal=Math.round(from+(total-from)*(1-Math.pow(1-x,3)));const c=$('totCell');if(c)c.textContent=money(shownTotal);if(x<1)tick=requestAnimationFrame(run);};
+  tick=requestAnimationFrame(run);
+}
+
+/* ---------- gallery & params ---------- */
+$('gallery').innerHTML=PRESETS.map(p=>`<button type="button" class="tile" data-preset="${p.id}" aria-pressed="false"><svg viewBox="0 0 48 36" aria-hidden="true">${ICON[p.id]}</svg>${p.label}</button>`).join('');
+$('gallery').addEventListener('click',e=>{const b=e.target.closest('.tile');if(!b)return;choosePreset(b.dataset.preset);});
+function markPreset(id){document.querySelectorAll('.tile').forEach(b=>b.setAttribute('aria-pressed',b.dataset.preset===id));}
+function choosePreset(id){
+  const pr=PRESETS.find(p=>p.id===id);S.preset=id;markPreset(id);
+  if(!pr.tpl){$('file').click();return;}
+  if(pr.t)setThk(pr.t);
+  S.desc='';setTemplate(pr.tpl,pr.p,true);
+}
+function setTemplate(tpl,params,animate){
+  const changed=tpl!==S.tpl||S.mode!=='tpl';
+  S.tpl=tpl;S.params=cleanParams(tpl,params);S.fold=1;$('fold').value=100;
+  renderForm();setMode('tpl');regen(true);
+  if(animate&&changed)playFold();
+}
+function renderForm(){
+  const T=TEMPLATES[S.tpl];$('paramsTitle').textContent=T.name;
+  $('pgrid').innerHTML=T.fields.map(f=>{const smax=Math.max(f.smax||f.max,S.params[f.k]);return `<div class="fld" data-k="${f.k}">
+    <div class="top"><label for="p_${f.k}">${f.l}${f.u?` (${f.u})`:''}</label></div>
+    <div class="ctl"><input type="range" id="r_${f.k}" min="${f.min}" max="${smax}" step="${f.int?1:(smax>500?5:1)}" value="${S.params[f.k]}" aria-label="${f.l}">
+    <input id="p_${f.k}" class="num" type="number" inputmode="decimal" min="${f.min}" max="${f.max}" step="${f.int?1:'any'}" value="${S.params[f.k]}"></div>
+    ${f.h?`<span class="h">${f.h}</span>`:''}</div>`;}).join('');
+  syncShow();
+}
+function syncShow(){TEMPLATES[S.tpl].fields.forEach(f=>{const el=document.querySelector(`.fld[data-k="${f.k}"]`);if(el)el.hidden=f.show?!f.show(S.params):false;});}
+let rt;
+$('pgrid').addEventListener('input',e=>{
+  const id=e.target.id,k=id.slice(2),v=parseFloat(e.target.value);if(!isFinite(v))return;
+  S.params[k]=v;if(id[0]==='r')$('p_'+k).value=v;else{const r=$('r_'+k);if(+r.max<v)r.max=v;r.value=v;}
+  syncShow();clearTimeout(rt);rt=setTimeout(()=>regen(false),id[0]==='r'?40:180);});
+$('pgrid').addEventListener('change',e=>{const k=e.target.id.slice(2);if(!TEMPLATES[S.tpl].fields.find(x=>x.k===k))return;S.params=cleanParams(S.tpl,S.params);$('p_'+k).value=S.params[k];$('r_'+k).value=S.params[k];regen(false);});
+function setMode(m){S.mode=m;$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('dxfBox').hidden=m!=='tpl';if(m==='dxf'){$('paramsTitle').textContent='כיפוף';S.bends=parseInt($('bends').value)||0;markPreset('dxf');regen(true);}}
+
+/* ---------- tabs ---------- */
+function showTab(){}
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+
+/* ---------- material / qty / thickness / view ---------- */
+function setThk(t){const sel=$('thk');if(![...sel.options].some(o=>+o.value===t)){const op=new Option(String(t),String(t));const after=[...sel.options].find(o=>+o.value>t);sel.add(op,after||null);}
+  sel.value=[...sel.options].find(o=>+o.value===t).value;S.t=t;}
+$('mat').addEventListener('change',e=>{S.mat=e.target.value;applyColor();update();caption();});
+$('thk').addEventListener('change',e=>{S.t=+e.target.value;regen(false);});
+['qty','bends'].forEach(id=>$(id).addEventListener('input',e=>{S[id]=Math.max(+e.target.min,parseInt(e.target.value)||0);if(id==='bends'&&S.mode==='dxf')regen(false);else update();}));
+document.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>{const[id,dv]=b.dataset.step.split(':');const el=$(id);S[id]=Math.max(+el.min,(parseInt(el.value)||0)+ +dv);el.value=S[id];if(id==='bends'&&S.mode==='dxf')regen(false);else update();}));
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+$('dimToggle').addEventListener('click',e=>{showDims=!showDims;e.currentTarget.setAttribute('aria-pressed',showDims);if(dimLines)dimLines.visible=showDims;dimLabels.forEach(l=>{if(!l.el.classList.contains('ref'))l.el.hidden=!showDims;});});
+$('refToggle').addEventListener('click',e=>{S.ref=!S.ref;e.currentTarget.setAttribute('aria-pressed',S.ref);if(S.ref&&S.scene==='hinge'){cancelAnimationFrame(foldAnim);applyFold(1);}build();setView(lastView);});
+
+/* ---------- color ---------- */
+function updateRal(){
+  const r=ralInfo();
+  $('swatch').style.background=r?r.hex:'var(--surface-2)';
+  $('ralName').textContent=r?r.name:(S.ral?'מספר לא מוכר':'');
+  $('ralName').classList.toggle('bad',!r&&!!S.ral);
+  document.querySelectorAll('.ral-chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ral===String(r&&r.k)));
+  applyColor();update();if(S.data)caption();
+}
+$('ralList').innerHTML=Object.entries(RAL).map(([k,v])=>`<option value="${k}">${v[1]}</option>`).join('');
+$('ralChips').innerHTML=POPULAR.map(k=>`<button type="button" class="ral-chip" data-ral="${k}" aria-pressed="false" title="${RAL[k][1]}"><i style="background:${RAL[k][0]}"></i>${k}</button>`).join('');
+$('ralChips').addEventListener('click',e=>{const b=e.target.closest('.ral-chip');if(!b)return;S.ral=b.dataset.ral;$('ral').value=S.ral;updateRal();});
+$('ral').addEventListener('input',e=>{S.ral=e.target.value.trim();updateRal();});
+function setPaint(on){S.paint=on;$('paint').checked=on;$('paintOpts').hidden=!on;applyColor();update();if(S.data)caption();}
+$('paint').addEventListener('change',e=>setPaint(e.target.checked));
+$('finish').addEventListener('change',e=>{S.finish=e.target.value;applyColor();});
+
+/* ---------- DXF upload ---------- */
+function readFile(f){if(!f)return;if(!/\.dxf$/i.test(f.name)){$('err').textContent='רק קובצי DXF.';$('err').hidden=false;return;}
+  showTab('file');const fr=new FileReader();fr.onload=()=>{S.desc='';S.file=f.name;S.dxfText=fr.result;$('fname').textContent=f.name;setMode('dxf');};fr.readAsText(f);}
+$('file').addEventListener('change',e=>readFile(e.target.files[0]));
+let dragN=0;
+viewer.addEventListener('dragenter',e=>{e.preventDefault();dragN++;$('drop').hidden=false;});
+viewer.addEventListener('dragleave',()=>{if(--dragN<=0){dragN=0;$('drop').hidden=true;}});
+viewer.addEventListener('dragover',e=>e.preventDefault());
+viewer.addEventListener('drop',e=>{e.preventDefault();dragN=0;$('drop').hidden=true;readFile(e.dataTransfer.files[0]);});
+$('copyDxf').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText($('dxfText').textContent);b.textContent='הועתק';}catch(_){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('dxfText'));s.removeAllRanges();s.addRange(rg);b.textContent='הטקסט מסומן, העתיקו ידנית';}setTimeout(()=>b.textContent='העתקת DXF',2500);});
+
+/* ---------- assistant chat ---------- */
+const TPL_DOC=`- plate: flat rectangle. W length, H width, r corner radius (0 = sharp), hn number of holes (1 = centre, 2 = at the two ends of the long side, 4 = corners, other even numbers = two rows along the long edges), hd hole diameter, off distance from plate edge to hole centre, center = diameter of one central hole (0 = none).
+- disc: flat circle, ring, washer or flange. D outer diameter, Di inner hole diameter (0 = none), hn holes on a bolt circle, hd hole diameter, pcd bolt-circle diameter.
+- angle: L angle with one 90° bend (also a shelf bracket or wall bracket). A lying leg (outside), B standing leg (outside), L length, hn holes in EACH leg spaced along the length, hd hole diameter.
+- channel: U channel, two 90° bends (cable tray, gutter, cover). W base width (outside), H side height (outside), L length, hn holes in the base, hd.
+- zed: Z profile, two bends in opposite directions. a bottom flange, h height, c top flange, L length, hn holes in each flange, hd.
+- tray: open tray or box with four sides bent up (planter, drip tray, tool tray). L length, W width, H wall height (outside), hn holes in the bottom, hd.`;
+const CHAT_RULES=`You are the friendly ordering assistant of an Israeli laser-cutting and sheet-metal bending shop. You chat in Hebrew with customers who cannot read technical drawings and turn what they say (and any sketch or photo) into a part that is drawn live on their screen in 3D.
+Templates (choose ONE; all lengths in millimetres, numbers only; fill ALL params of the chosen template):
+${TPL_DOC}
+Shop conventions: customers often speak in centimetres (ס״מ) or metres; convert. A bolt Mx needs a hole of x+1 mm (M6→7, M8→9, M10→11, M12→13, M16→17, M20→22). Typical hole edge distance ≈ 2× hole diameter. Thickness options (mm): 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12; for brackets that carry weight suggest 3-6, for covers and trays 1-2. Materials: steel (ברזל שחור), galv (מגולוון, good outdoors without paint), ss (נירוסטה, kitchens and outdoors), al (aluminium, light). Paint is a RAL code: black 9005, white 9016, anthracite 7016, light grey 7035, silver 9006, red 3020, blue 5010, green 6005; "ral":"none" means no paint.
+Every customer message starts with the part currently on screen as JSON. When the customer describes a new part or asks for a change, return the FULL updated design (keep values they did not change). When they only ask a question, return "design": null.
+Write "reply" in plain Hebrew: ONE short sentence, at most 12 words, no jargon, no markdown. When you build or change the part, just name what you made. If something important for production is missing, ask ONE question. Do not quote prices or delivery dates; the page calculates the price.
+"suggestions": 2-3 Hebrew quick replies of 1-3 words each (e.g. "יותר עבה", "בלי חורים").
+Reply with only JSON:
+{"reply":"...","design":{"template":"angle","params":{"A":40,"B":60,"L":250,"hn":2,"hd":7},"material":"steel","thickness":3,"qty":4,"ral":"9005"},"suggestions":["...","..."]}`;
+let sampleFn=null,photo=null,ctl=null,turns=[],canImages=false;
+(async()=>{
+  if(!window.claude||!claude.use)return;
+  try{sampleFn=await claude.use('sample');}catch(_){sampleFn=null;}
+  if(!sampleFn)return;
+  const lim=await sampleFn.limits().catch(()=>null);
+  if(lim&&lim.images){canImages=true;$('photoBtn').hidden=false;$('sketchBtn').hidden=false;$('photo').accept=lim.images.mediaTypes.join(',');}
+})();
+function bubble(role,text,img,built){
+  const m=document.createElement('div');m.className='msg '+(role==='me'?'me':'bot');
+  if(text)m.appendChild(document.createTextNode(text));
+  if(img){const i=document.createElement('img');i.alt='התמונה שצורפה';i.src=URL.createObjectURL(img);m.appendChild(i);}
+  if(built){const b=document.createElement('span');b.className='built';b.textContent=built;m.appendChild(b);}
+  $('chat').appendChild(m);$('chat').scrollTop=$('chat').scrollHeight;return m;
+}
+function typingBubble(){const m=document.createElement('div');m.className='msg bot';m.innerHTML='<span class="typing" aria-label="חושב"><i></i><i></i><i></i></span>';$('chat').appendChild(m);$('chat').scrollTop=$('chat').scrollHeight;return m;}
+function quick(list){const q=$('quick');q.innerHTML='';(list||[]).filter(s=>typeof s==='string'&&s.trim()).slice(0,4).forEach(s=>{const b=document.createElement('button');b.type='button';b.className='qr';b.textContent=s.slice(0,60);b.onclick=()=>send(s);q.appendChild(b);});}
+function currentDesign(){return S.mode==='tpl'?{template:S.tpl,params:cleanParams(S.tpl,S.params),material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'}:{template:'uploaded DXF file',material:S.mat,thickness:S.t,qty:S.qty,ral:S.paint?S.ral:'none'};}
+async function send(text,img){
+  text=(text||'').trim();if(!text&&!img)return;
+  if(ctl)return;
+  $('msg').value='';quick([]);
+  bubble('me',text||(img?'':''),img);
+  if(!sampleFn){
+    const r=localParse(text);applyDesign(r,true);
+    bubble('bot','בניתי. בדקו את המידות.',null,'✓');
+    return;
+  }
+  const userTurn=`[החלק שעל המסך עכשיו: ${JSON.stringify(currentDesign())}]\n${text||'(ראו את התמונה המצורפת)'}${img?'\n[צורפה תמונה או ציור של הלקוח. קראו ממנו את הצורה ואת כל המידות הכתובות.]':''}`;
+  const input=[{role:'user',content:CHAT_RULES},...turns.slice(-12),{role:'user',content:userTurn}];
+  ctl=new AbortController();$('send').disabled=true;$('stop').hidden=false;const tb=typingBubble();
+  const opts={signal:ctl.signal,cache:false};if(img)opts.images=[img];
+  try{
+    const r=await sampleFn.json(input,opts);tb.remove();
+    turns.push({role:'user',content:userTurn},{role:'assistant',content:JSON.stringify({reply:r&&r.reply,design:r&&r.design||null})});
+    let built=null;
+    if(r&&r.design&&TEMPLATES[r.design.template]){applyDesign(r.design,false);built='✓';}
+    bubble('bot',typeof r?.reply==='string'&&r.reply?r.reply:'עודכן.',null,built);
+    quick(r&&r.suggestions);
+  }catch(e){
+    tb.remove();const c=e&&e.code;
+    if(c==='cancelled')return;
+    if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(c)){sampleFn=null;$('photoBtn').hidden=true;$('sketchBtn').hidden=true;$('sketch').hidden=true;
+      const r=localParse(text);applyDesign(r,true);bubble('bot','בניתי. בדקו את המידות.',null,'✓');}
+    else bubble('bot',{images_unavailable:'לא הצלחתי לקרוא את התמונה. נסו לכתוב את המידות במילים.',image_rejected:'התמונה לא נקלטה. נסו JPG או PNG אחר.',rate_limited:'יש עומס רגעי. נסו שוב בעוד דקה.',invalid_json:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות, למשל 20 על 30 ס״מ.',empty_completion:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות.',refused:'אני יכול לעזור רק עם חלקי פח לחיתוך וכיפוף.',session_expired:'צריך להתחבר מחדש ולנסות שוב.'}[c]||'משהו השתבש בחיבור. שלחו שוב.');
+  }finally{ctl=null;$('send').disabled=false;$('stop').hidden=true;}
+}
+function applyDesign(d,local){
+  const num=v=>{const n=Number(v);return isFinite(n)&&n>0?n:null;};
+  if(['steel','galv','ss','al'].includes(d.material)){S.mat=d.material;$('mat').value=d.material;}
+  const t=num(d.thickness);if(t&&t<=30)setThk(Math.round(t*10)/10);
+  const q=num(d.qty);if(q){S.qty=Math.min(100000,Math.round(q));$('qty').value=S.qty;}
+  if(d.ral==='none')setPaint(false);
+  else{const ral=d.ral!=null?String(d.ral).replace(/\D/g,''):'';if(ral){S.ral=ral;$('ral').value=ral;setPaint(true);updateRal();}}
+  if(local)S.desc=$('msg').value||S.desc;
+  const pr=PRESETS.find(p=>p.tpl===d.template);S.preset=pr?pr.id:'';markPreset(S.preset);
+  setTemplate(d.template,d.params||{},true);
+}
+$('send').addEventListener('click',()=>{const t=$('msg').value;if(t.trim())S.desc=t.trim();send(t,photo);photo=null;$('photo').value='';renderPhoto();});
+$('msg').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('send').click();}});
+$('stop').addEventListener('click',()=>ctl&&ctl.abort());
+$('photoBtn').addEventListener('click',()=>$('photo').click());
+$('photo').addEventListener('change',e=>{photo=e.target.files[0]||null;renderPhoto();});
+function renderPhoto(){const c=$('photoChip');c.innerHTML='';if(!photo)return;const s=document.createElement('span');s.className='photo-chip';s.textContent=photo.name.slice(0,26);const x=document.createElement('button');x.type='button';x.textContent='×';x.setAttribute('aria-label','הסרת התמונה');x.onclick=()=>{photo=null;$('photo').value='';renderPhoto();};s.appendChild(x);c.appendChild(s);}
+// greeting (shown, not sent)
+bubble('bot','מה בונים? כתבו, ציירו או בחרו צורה.');
+quick(['מדף לקיר 60 ס״מ','פלטה לעמוד 15×15','מגש 40×30']);
+
+/* ---------- finger sketch pad ---------- */
+const pad=$('pad'),pctx=pad.getContext('2d');let strokes=[],drawing=null;
+function sizePad(){if($('sketch').hidden)return;const r=pad.getBoundingClientRect(),dpr=Math.min(devicePixelRatio,2);pad.width=Math.round(r.width*dpr);pad.height=Math.round(r.height*dpr);pctx.setTransform(dpr,0,0,dpr,0,0);redraw();}
+function redraw(){const r=pad.getBoundingClientRect();pctx.fillStyle=tok('--paper');pctx.fillRect(0,0,r.width,r.height);pctx.strokeStyle=tok('--pen');pctx.lineWidth=2.6;pctx.lineCap='round';pctx.lineJoin='round';
+  strokes.forEach(s=>{pctx.beginPath();s.forEach((p,i)=>i?pctx.lineTo(p.x,p.y):pctx.moveTo(p.x,p.y));if(s.length===1)pctx.lineTo(s[0].x+.1,s[0].y);pctx.stroke();});}
+const ptr=e=>{const r=pad.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+pad.addEventListener('pointerdown',e=>{pad.setPointerCapture(e.pointerId);drawing=[ptr(e)];strokes.push(drawing);redraw();});
+pad.addEventListener('pointermove',e=>{if(!drawing)return;drawing.push(ptr(e));redraw();});
+['pointerup','pointercancel'].forEach(t=>pad.addEventListener(t,()=>{drawing=null;}));
+$('sketchBtn').addEventListener('click',()=>{const s=$('sketch');s.hidden=!s.hidden;$('sketchBtn').setAttribute('aria-pressed',!s.hidden);sizePad();});
+$('clearSketch').addEventListener('click',()=>{strokes=[];redraw();});
+$('undoSketch').addEventListener('click',()=>{strokes.pop();redraw();});
+$('sendSketch').addEventListener('click',()=>{if(!strokes.length)return;pad.toBlob(b=>{if(!b)return;const f=new File([b],'sketch.png',{type:'image/png'});const t=$('msg').value.trim()||'לפי הציור';S.desc=t+' (ציור)';send(t,f);strokes=[];redraw();$('sketch').hidden=true;},'image/png');});
+new ResizeObserver(()=>sizePad()).observe(pad);
+
+// very small rule-based parser when Claude is not available
+function localParse(raw){
+  let s=' '+raw.replace(/[×✕*]/g,'x').replace(/[״"”'׳]/g,'').replace(/[,;]/g,' ').replace(/[øØ⌀]/g,' ø ').toLowerCase()+' ';
+  const N='(\\d+(?:\\.\\d+)?)',rx=x=>new RegExp(x,'i'),take=re=>{const m=s.match(re);if(m)s=s.replace(m[0],' ');return m;};
+  const W2N={'שני':2,'שתי':2,'שניים':2,'שלושה':3,'שלוש':3,'ארבעה':4,'ארבע':4,'חמישה':5,'שישה':6,'שש':6,'שמונה':8,'עשרה':10};
+  s=s.replace(/(^|\s)(שני|שתי|שניים|שלושה|שלוש|ארבעה|ארבע|חמישה|שישה|שש|שמונה|עשרה)(?=\s)/g,(x,a,w)=>a+W2N[w]);
+  const cm=/סמ|ס\s*מ|\bcm\b/.test(s)?10:1;let m;const r={params:{},assumptions:['שאר המידות לפי ברירת מחדל. בדקו בשלב 2.'],questions:[]};
+  if(/נירוסט|stainless/.test(s))r.material='ss';else if(/אלומ|alum/.test(s))r.material='al';else if(/מגולו|גלוון|galv/.test(s))r.material='galv';else if(/ברזל|פלדה|steel/.test(s))r.material='steel';
+  if(/שחור|black/.test(s))r.ral='9005';else if(/לבן|white/.test(s))r.ral='9016';else if(m=s.match(/ral\s*(\d{4})/))r.ral=m[1];
+  r.template=/זווית|angle/.test(s)?'angle':/תעל|channel/.test(s)?'channel':/מגש|קופס|tray|box/.test(s)?'tray':/\bz\b|זד/.test(s)?'zed':/טבעת|שייב|דסקית|ring|עיגול|עגול|דיסק|פלאנג|circle|disc/.test(s)?'disc':'plate';
+  if(m=take(rx('(?:בעובי|עובי|\\st)\\s*'+N)))r.thickness=+m[1];
+  if(m=take(rx(N+'\\s*(?:יחידות|יחידה|יח|pcs|פלטות|חלקים)')))r.qty=+m[1];
+  m=take(rx(N+'\\s*(?:חורים|חורי|holes)'+'\\s*(?:בקוטר|קוטר|ø|של|ל?ברגי|לבורג)?\\s*m?'+N));
+  if(m){r.params.hn=+m[1];const mm=/m\d/.test(m[0]);r.params.hd=mm?+m[2]+1:+m[2];}
+  if(m=take(rx('חור\\s*(?:מרכזי|באמצע)\\s*(?:בקוטר|קוטר|ø)?\\s*'+N)))r.params[r.template==='disc'?'Di':'center']=+m[1];
+  if(m=take(rx('(?:אורך|length)\\s*'+N)))r.params.L=+m[1]*cm;
+  const pair=take(rx(N+'\\s*(?:x|על)\\s*'+N+'(?:\\s*(?:x|על)\\s*'+N+')?'));
+  const nums=(s.match(/\d+(?:\.\d+)?/g)||[]).map(Number);
+  const a=pair?+pair[1]*cm:null,b=pair?+pair[2]*cm:null,c=pair&&pair[3]?+pair[3]*cm:null;
+  const P=r.params;
+  if(r.template==='plate'){if(a)P.W=a;if(b)P.H=b;}
+  else if(r.template==='disc'){const d=s.match(rx('(?:קוטר|ø)\\s*'+N));if(d)P.D=+d[1]*cm;else if(nums.length)P.D=nums[0]*cm;}
+  else if(r.template==='angle'){if(a)P.A=a;if(b)P.B=b;if(c)P.L=c;}
+  else if(r.template==='channel'){if(a)P.W=a;if(b)P.H=b;if(c)P.L=c;}
+  else if(r.template==='tray'){if(a)P.L=a;if(b)P.W=b;if(c)P.H=c;}
+  else if(r.template==='zed'){if(a)P.a=a;if(b)P.h=b;if(c)P.c=c;}
+  const base=PRESETS.find(p=>p.tpl===r.template).p;r.params=Object.assign({},base,P);
+  if(r.params.hn>1&&'off'in base)r.params.off=autoOff(r.params.hd);
+  return r;
+}
+
+
+/* ---------- order ---------- */
+function shapeLine(){
+  if(S.mode==='dxf')return `קובץ: ${S.file}${S.bends?`, ${S.bends} כיפופים`+($('bendNote').value?` (${$('bendNote').value})`:''):''}`;
+  const T=TEMPLATES[S.tpl];
+  return `צורה: ${T.name}. `+T.fields.filter(f=>!f.show||f.show(S.params)).map(f=>`${f.l} ${fmt(S.params[f.k])}`).join(', ');
+}
+$('orderBtn').addEventListener('click',()=>{$('orderForm').hidden=false;$('orderBtn').hidden=true;$('cName').focus();});
+$('orderForm').addEventListener('submit',e=>{e.preventDefault();
+  const r=ralInfo();
+  const txt=['הזמנה חדשה',`שם: ${$('cName').value}`,`טלפון: ${$('cPhone').value}`,
+   S.desc?`בקשת הלקוח: ${S.desc}`:'',shapeLine(),
+   `חומר: ${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,`פריסה: ${fmt(S.data.W)} × ${fmt(S.data.H)} מ״מ`,`כמות: ${S.qty}`,
+   `צבע: ${S.paint&&r?`RAL ${r.k} ${r.name}, ${$('finish').selectedOptions[0].text}`:'ללא'}`,
+   `מחיר ליחידה: ${money(S.unit)}`,`סה״כ: ${money(S.total)} לפני מע״מ`,$('cNote').value?`הערות: ${$('cNote').value}`:''].filter(Boolean).join('\n');
+  $('orderText').textContent=txt;$('done').hidden=false;});
+$('copy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText($('orderText').textContent);b.textContent='הועתק';}catch(_){const s=getSelection(),rg=document.createRange();rg.selectNodeContents($('orderText'));s.removeAllRanges();s.addRange(rg);b.textContent='הטקסט מסומן, העתיקו ידנית';}});
+
+/* ---------- start ---------- */
+resize();updateRal();S.preset='angle';markPreset('angle');S.mode='';setTemplate('angle',PRESETS.find(p=>p.id==='angle').p,true);
+</script>
+
+</body></html>
