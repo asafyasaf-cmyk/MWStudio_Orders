@@ -18,6 +18,9 @@
    const ORDERS_ENDPOINT='https://script.google.com/macros/s/.../exec';
    ```
 
+## קובצי STEP
+בהזמנת פרופיל נוצר קובץ STEP (הפרופיל עם החורים והחירוצים) ונשמר ב-Google Drive שלכם בתיקייה **"MW Studio – קובצי STEP"**. הקישור מופיע בעמודה **"קובץ STEP"** בשורת ההזמנה. בפעם הראשונה Google יבקש אישור גישה ל-Drive (מריצים שוב את setup).
+
 ## התראה במייל (לא חובה)
 ב-`Code.gs` ממלאים `const NOTIFY_EMAIL='you@example.com';`, שומרים, ואז **Deploy ← Manage deployments ← ✏️ ← Version: New version ← Deploy** (הכתובת נשארת אותה כתובת).
 

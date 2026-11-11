@@ -11,8 +11,10 @@ const NOTIFY_EMAIL = '';
 const COLUMNS = [
   ['id', 'מספר הזמנה'], ['created', 'תאריך'], ['status', 'סטטוס'], ['name', 'שם'], ['phone', 'טלפון'],
   ['product', 'מוצר'], ['material', 'חומר'], ['qty', 'כמות'], ['unit', 'מחיר ליח׳'], ['total', 'סה״כ'],
-  ['color', 'צבע'], ['note', 'הערות'], ['desc', 'בקשת הלקוח'], ['text', 'טקסט מלא']
+  ['color', 'צבע'], ['note', 'הערות'], ['desc', 'בקשת הלקוח'], ['text', 'טקסט מלא'], ['stepUrl', 'קובץ STEP']
 ];
+// STEP files of profile orders are saved in this Google Drive folder (created on first use).
+const STEP_FOLDER = 'MW Studio – קובצי STEP';
 const COL = k => COLUMNS.findIndex(c => c[0] === k) + 1;
 
 /** Run once from the editor (▶ setup) to create and format the sheet. */
@@ -40,6 +42,8 @@ function sheet_() {
     sh.appendRow(COLUMNS.map(c => c[1]));
     sh.setFrozenRows(1);
     sh.setRightToLeft(true);
+  } else if (sh.getLastColumn() < COLUMNS.length) { // a sheet made by an older version: add the new headers
+    sh.getRange(1, 1, 1, COLUMNS.length).setValues([COLUMNS.map(c => c[1])]);
   }
   return sh;
 }
@@ -56,6 +60,11 @@ function doPost(e) {
     const sh = sheet_();
     const ids = sh.getLastRow() > 1 ? sh.getRange(2, COL('id'), sh.getLastRow() - 1, 1).getValues().flat() : [];
     if (ids.indexOf(String(d.id)) >= 0) return json_({ ok: true, id: d.id, duplicate: true });
+    d.stepUrl = '';
+    if (d.step && String(d.step).indexOf('ISO-10303-21') === 0 && String(d.step).length < 20000000) {
+      try { d.stepUrl = saveStep_(String(d.step), String(d.stepName || d.id + '.step')); } catch (err) { d.stepUrl = 'שגיאה בשמירה: ' + err; }
+    }
+    delete d.step;
     sh.appendRow(COLUMNS.map(([k]) => k === 'created' ? new Date() : k === 'status' ? STATUSES[0] : clean_(d[k], k)));
     const row = sh.getLastRow();
     sh.getRange(row, COL('phone')).setNumberFormat('@').setValue(clean_(d.phone, 'phone'));
@@ -70,11 +79,19 @@ function doPost(e) {
   }
 }
 
+function saveStep_(text, name) {
+  const it = DriveApp.getFoldersByName(STEP_FOLDER);
+  const folder = it.hasNext() ? it.next() : DriveApp.createFolder(STEP_FOLDER);
+  const safe = name.replace(/[^\w.\-א-ת]+/g, '_').slice(0, 120);
+  return folder.createFile(safe.endsWith('.step') ? safe : safe + '.step', text, 'application/step').getUrl();
+}
+
 function doGet() { return json_({ ok: true, service: 'MW Studio orders' }); }
 
 // Numbers stay numbers; text is trimmed, length-capped and protected from formula injection.
 function clean_(v, k) {
   if (v == null) return '';
+  if (k === 'stepUrl') return String(v).slice(0, 500);
   if (typeof v === 'number' && (k === 'qty' || k === 'unit' || k === 'total')) return isFinite(v) ? v : '';
   let s = String(v).slice(0, k === 'text' ? 5000 : 500).trim();
   if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;

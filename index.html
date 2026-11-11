@@ -192,6 +192,7 @@ input[aria-invalid="true"]{border-color:var(--warn);box-shadow:0 0 0 1px var(--w
 .opgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 8px;align-items:end}
 .opgrid label.f{font-size:12px}.opgrid input{padding:5px 7px;font-size:15px}
 .toggle.small{font-size:13px;grid-column:1/-1}.toggle.small input{width:16px;height:16px}
+.stepbtn{align-self:flex-start}
 .facts bdi{unicode-bidi:isolate}
 .saved{font-weight:700;font-size:14px;color:var(--ok)}
 .saved.bad{color:var(--warn)}
@@ -316,6 +317,7 @@ h1{font-size:22px}
           <div class="opsbox">
             <div class="opsbar"><b>עיבודים</b><button type="button" class="btn small" id="opAddHole">+ חור</button><button type="button" class="btn small" id="opAddNotch">+ חירוץ</button></div>
             <div id="opsList"></div>
+            <button type="button" class="btn small stepbtn" id="stepBtn">⬇ קובץ STEP למכונת הלייזר</button>
           </div>
           <div class="profinfo"><svg class="secsvg" id="secSvg" role="img" aria-label="חתך הפרופיל"></svg><dl class="profspec" id="profSpec"></dl></div>
         </div>
@@ -1131,6 +1133,65 @@ renderer.domElement.addEventListener('pointerup',e=>{
 addEventListener('keydown',e=>{if(e.key==='Escape'&&tool)setTool(tool);});
 function regenOps(){if(S.mode!=='prof')return;const keep=[camera.position.clone(),controls.target.clone()];regenProfile(false,true);camera.position.copy(keep[0]);controls.target.copy(keep[1]);controls.update();}
 
+/* ---------- STEP export for tube/profile lasers (OpenCascade via replicad, loaded on first use) ---------- */
+// STEP frame: X = along the length (0 = start), Y = across the section (0 = front face), Z = up. Units: mm.
+const OCC_JS='https://cdn.jsdelivr.net/npm/replicad-opencascadejs@1.1.0/dist/replicad_single.js',REPLICAD_JS='https://cdn.jsdelivr.net/npm/replicad@1.1.0/+esm';
+let occReady=null;
+function loadOCC(){
+  if(!occReady){occReady=(async()=>{const [m,R]=await Promise.all([import(OCC_JS),import(REPLICAD_JS)]);R.setOC(await m.default());return R;})();
+    occReady.catch(()=>{occReady=null;});}
+  return occReady;
+}
+// exact cross-section (lines and true arcs) as a replicad Drawing in the (Y, Z) plane
+function stepSection(R,fam,d){
+  const P=(cx,cy,r,a)=>[cx+r*Math.cos(a*Math.PI/180),cy+r*Math.sin(a*Math.PI/180)];
+  const arc=(pen,cx,cy,r,a0,a1)=>pen.threePointsArcTo(P(cx,cy,r,a1),P(cx,cy,r,(a0+a1)/2));
+  const circ=(D)=>R.drawCircle(D/2).translate(D/2,D/2);
+  if(fam==='ipe'||fam==='hea'||fam==='heb'){const{h,b,tw,tf,r}=d,xr=b/2+tw/2,xl=b/2-tw/2;
+    let p=R.draw([0,0]).lineTo([b,0]).lineTo([b,tf]).lineTo([xr+r,tf]);p=arc(p,xr+r,tf+r,r,270,180).lineTo([xr,h-tf-r]);p=arc(p,xr+r,h-tf-r,r,180,90);
+    p=p.lineTo([b,h-tf]).lineTo([b,h]).lineTo([0,h]).lineTo([0,h-tf]).lineTo([xl-r,h-tf]);p=arc(p,xl-r,h-tf-r,r,90,0).lineTo([xl,tf+r]);p=arc(p,xl-r,tf+r,r,0,-90);
+    return p.lineTo([0,tf]).close();}
+  if(fam==='upn'){const{h,b,tw,tf,r}=d;let p=R.draw([0,0]).lineTo([b,0]).lineTo([b,tf]).lineTo([tw+r,tf]);p=arc(p,tw+r,tf+r,r,270,180).lineTo([tw,h-tf-r]);p=arc(p,tw+r,h-tf-r,r,180,90);
+    return p.lineTo([b,h-tf]).lineTo([b,h]).lineTo([0,h]).close();}
+  if(fam==='angle'){const{a,t,r}=d;let p=R.draw([0,0]).lineTo([a,0]).lineTo([a,t]).lineTo([t+r,t]);p=arc(p,t+r,t+r,r,270,180);return p.lineTo([t,a]).lineTo([0,a]).close();}
+  if(fam==='shs'||fam==='rhs'){const{B,H,t}=d,ro=t<=6?2*t:2.5*t,ri=t<=6?t:1.5*t;
+    return R.drawRoundedRectangle(B,H,ro).translate(B/2,H/2).cut(R.drawRoundedRectangle(B-2*t,H-2*t,ri).translate(B/2,H/2));}
+  if(fam==='chs'){const{D,t}=d;return circ(D).cut(R.drawCircle(D/2-t).translate(D/2,D/2));}
+  if(fam==='flat'){const{b,t}=d;return R.draw([0,0]).lineTo([b,0]).lineTo([b,t]).lineTo([0,t]).close();}
+  return circ(d.d);
+}
+function stepTools(R,sec,L){
+  const w=sec.w,h=sec.h,out=[],tan=a=>Math.tan(a*Math.PI/360);
+  const prismXZ=(pts,y0,y1)=>R.draw(pts[0]).lineTo(pts[1]).lineTo(pts[2]).close().sketchOnPlane('XZ').extrude(y1-y0).translate([0,y1,0]); // XZ extrudes toward -Y
+  const prismXY=(pts,z0,z1)=>R.draw(pts[0]).lineTo(pts[1]).lineTo(pts[2]).close().sketchOnPlane('XY').extrude(z1-z0).translate([0,0,z0]);
+  for(const o of S.prof.ops){
+    if(o.kind==='hole'){const r=o.d/2;
+      for(const x of holeXs(o)){
+        if(o.face==='top'||o.face==='bottom'){const z0=o.thru?-1:o.face==='top'?h/2:-1,z1=o.thru?h+1:o.face==='top'?h+1:h/2;out.push(R.makeCylinder(r,z1-z0,[x,w/2+o.c,z0],[0,0,1]));}
+        else{const y0=o.thru?-1:o.face==='front'?-1:w/2,y1=o.thru?w+1:o.face==='front'?w/2:w+1;out.push(R.makeCylinder(r,y1-y0,[x,y0,h/2+o.c],[0,1,0]));}}}
+    else if(o.shape==='rect'){const x0=o.x,x1=o.x+o.wdt,d=o.depth;
+      out.push(o.face==='top'?R.makeBox([x0,-1,h-d],[x1,w+1,h+1]):o.face==='bottom'?R.makeBox([x0,-1,-1],[x1,w+1,d]):
+        o.face==='front'?R.makeBox([x0,-1,-1],[x1,d,h+1]):R.makeBox([x0,w-d,-1],[x1,w+1,h+1]));}
+    else{const xc=o.x,d=o.depth,hw=(d+1)*tan(o.ang);
+      out.push(o.face==='top'?prismXZ([[xc-hw,h+1],[xc+hw,h+1],[xc,h-d]],-1,w+1):o.face==='bottom'?prismXZ([[xc-hw,-1],[xc+hw,-1],[xc,d]],-1,w+1):
+        o.face==='front'?prismXY([[xc-hw,-1],[xc+hw,-1],[xc,d]],-1,h+1):prismXY([[xc-hw,w+1],[xc+hw,w+1],[xc,w-d]],-1,h+1));}
+  }
+  return out;
+}
+async function buildSTEP(){
+  const R=await loadOCC(),P=profNow(),L=S.prof.L;
+  let part=stepSection(R,P.f.id,P.z.d).sketchOnPlane('YZ').extrude(L);
+  for(const t of stepTools(R,P.sec,L))part=part.cut(t);
+  const text=await part.blobSTEP().text();
+  return {text,volume:R.measureVolume(part),name:`${(lastOrder&&lastOrder.id)||'MW'}_${P.f.id}-${P.z.id}_L${fmt(L)}.step`};
+}
+async function downloadSTEP(btn){
+  const label=btn.textContent;btn.disabled=true;btn.textContent=occReady?'מכין STEP…':'טוען מנוע CAD…';
+  try{const s=await buildSTEP();const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s.text],{type:'application/step'}));a.download=s.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);btn.textContent='הורד ✓';}
+  catch(e){console.warn('STEP failed',e);btn.textContent='יצירת STEP נכשלה, נסו שוב';}
+  finally{btn.disabled=false;setTimeout(()=>btn.textContent=label,2500);}
+}
+
 /* ---------- fold control ---------- */
 let foldAnim=0;
 function applyFold(p,fromSlider){
@@ -1286,6 +1347,7 @@ function setMode(m){S.mode=m;$('tabSheet').setAttribute('aria-selected',m!=='pro
 $('famChips').addEventListener('click',e=>{const b=e.target.closest('.fam');if(!b)return;const f=CATALOG.find(x=>x.id===b.dataset.fam);S.prof.fam=f.id;S.prof.size=f.def;syncMats();renderProfForm();regen(true);});
 $('toolHole').addEventListener('click',()=>setTool('hole'));
 $('toolNotch').addEventListener('click',()=>setTool('notch'));
+$('stepBtn').addEventListener('click',e=>downloadSTEP(e.currentTarget));
 $('opAddHole').addEventListener('click',()=>{S.prof.ops.push(newOp('hole'));renderOps();regenOps();});
 $('opAddNotch').addEventListener('click',()=>{S.prof.ops.push(newOp('notch'));renderOps();regenOps();});
 let opt;
@@ -1541,8 +1603,10 @@ $('orderForm').addEventListener('submit',async e=>{e.preventDefault();if(saving)
   if(!ORDERS_ENDPOINT||lastOrder.saved)return;
   const line=$('savedLine');line.hidden=false;line.classList.remove('bad');line.textContent='שומר את ההזמנה…';
   saving=true;$('submitBtn').disabled=true;
+  let step=null;
+  if(S.mode==='prof'){line.textContent='מכין קובץ STEP…';try{step=await buildSTEP();}catch(err){console.warn('STEP failed',err);}line.textContent='שומר את ההזמנה…';}
   try{
-    const res=await fetch(ORDERS_ENDPOINT,{method:'POST',body:JSON.stringify({id,name:$('cName').value.trim(),phone:$('cPhone').value.trim(),note:$('cNote').value.trim(),desc:S.desc||'',
+    const res=await fetch(ORDERS_ENDPOINT,{method:'POST',body:JSON.stringify({id,step:step&&step.text,stepName:step&&step.name,name:$('cName').value.trim(),phone:$('cPhone').value.trim(),note:$('cNote').value.trim(),desc:S.desc||'',
       product:shapeLine(),material:S.mode==='prof'?MAT_NAME[S.mat]:`${MAT_NAME[S.mat]} ${fmt(S.t)} מ״מ`,qty:S.qty,color,unit:S.unit,total:S.total,text:txt,website:$('cWeb').value})});
     const j=await res.json();if(!j||!j.ok)throw new Error(j&&j.error||'save failed');
     lastOrder.saved=true;line.textContent=`ההזמנה נשמרה · מספר ${id}`;
