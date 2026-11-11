@@ -1363,13 +1363,16 @@ const TPL_DOC=`- plate: flat rectangle. W length, H width, r corner radius (0 = 
 const CHAT_RULES=`You are the friendly ordering assistant of an Israeli laser-cutting and sheet-metal bending shop. You chat in Hebrew with customers who cannot read technical drawings and turn what they say (and any sketch or photo) into a part that is drawn live on their screen in 3D.
 Templates (choose ONE; all lengths in millimetres, numbers only; fill ALL params of the chosen template):
 ${TPL_DOC}
+Sketches and photos: the left end of the main view is the start of the piece (x = 0); turn chained dimensions into positions from the start; holes drawn in a top view are face "top", in a side view face "front". If a dimension is unreadable, use the most plausible value, say what you assumed and ask one question. Never invent holes or notches that are not drawn.
 Shop conventions: customers often speak in centimetres (ס״מ) or metres; convert. A bolt Mx needs a hole of x+1 mm (M6→7, M8→9, M10→11, M12→13, M16→17, M20→22). Typical hole edge distance ≈ 2× hole diameter. Thickness options (mm): 1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12; for brackets that carry weight suggest 3-6, for covers and trays 1-2. Materials: steel (ברזל שחור), galv (מגולוון, good outdoors without paint), ss (נירוסטה, kitchens and outdoors), al (aluminium, light). Paint is a RAL code: black 9005, white 9016, anthracite 7016, light grey 7035, silver 9006, red 3020, blue 5010, green 6005; "ral":"none" means no paint.
 Every customer message starts with the part currently on screen as JSON. When the customer describes a new part or asks for a change, return the FULL updated design (keep values they did not change). When they only ask a question, return "design": null.
 Write "reply" in plain Hebrew: ONE short sentence, at most 12 words, no jargon, no markdown. When you build or change the part, just name what you made. If something important for production is missing, ask ONE question. Do not quote prices or delivery dates; the page calculates the price.
 "suggestions": 2-3 Hebrew quick replies of 1-3 words each (e.g. "יותר עבה", "בלי חורים").
 Reply with only JSON:
 {"reply":"...","design":{"template":"angle","params":{"A":40,"B":60,"L":250,"hn":2,"hd":7},"material":"steel","thickness":3,"qty":4,"ral":"9005"},"suggestions":["...","..."]}`;
-let sampleFn=null,photo=null,ctl=null,turns=[],canImages=false;
+let sampleFn=null,photo=null,ctl=null,turns=[],canImages=false,remoteAI=false;
+// Outside claude.ai the assistant runs through the shop's Google Apps Script (ORDERS_ENDPOINT), which holds the API key.
+if(ORDERS_ENDPOINT&&!(window.claude&&window.claude.use)){remoteAI=true;canImages=true;$('photoBtn').hidden=false;$('sketchBtn').hidden=false;$('photo').accept='image/jpeg,image/png,image/webp';}
 (async()=>{
   if(!window.claude||!claude.use)return;
   try{sampleFn=await claude.use('sample');}catch(_){sampleFn=null;}
@@ -1392,7 +1395,7 @@ async function send(text,img){
   if(ctl)return;
   $('msg').value='';quick([]);
   bubble('me',text||(img?'':''),img);
-  if(!sampleFn){
+  if(!sampleFn&&!remoteAI){
     const r=await localDesign(text);await applyDesign(r,true);
     bubble('bot','בניתי. בדקו את המידות.',null,'✓');
     return;
@@ -1402,7 +1405,7 @@ async function send(text,img){
   ctl=new AbortController();$('send').disabled=true;$('stop').hidden=false;const tb=typingBubble();
   const opts={signal:ctl.signal,cache:false};if(img)opts.images=[img];
   try{
-    const r=await sampleFn.json(input,opts);tb.remove();
+    const r=sampleFn?await sampleFn.json(input,opts):await remoteDesign(text,img,ctl.signal);tb.remove();
     turns.push({role:'user',content:userTurn},{role:'assistant',content:JSON.stringify({reply:r&&r.reply,design:r&&r.design||null})});
     let built=null;
     if(r&&r.design&&(TEMPLATES[r.design.template]||r.design.template==='profile')){await applyDesign(r.design,false);built='✓';}
@@ -1411,10 +1414,32 @@ async function send(text,img){
   }catch(e){
     tb.remove();const c=e&&e.code;
     if(c==='cancelled')return;
-    if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(c)){sampleFn=null;$('photoBtn').hidden=true;$('sketchBtn').hidden=true;$('sketch').hidden=true;
+    if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','ai_not_configured'].includes(c)){sampleFn=null;remoteAI=false;$('photoBtn').hidden=true;$('sketchBtn').hidden=true;$('sketch').hidden=true;
       const r=await localDesign(text);await applyDesign(r,true);bubble('bot','בניתי. בדקו את המידות.',null,'✓');}
-    else bubble('bot',{images_unavailable:'לא הצלחתי לקרוא את התמונה. נסו לכתוב את המידות במילים.',image_rejected:'התמונה לא נקלטה. נסו JPG או PNG אחר.',rate_limited:'יש עומס רגעי. נסו שוב בעוד דקה.',invalid_json:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות, למשל 20 על 30 ס״מ.',empty_completion:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות.',refused:'אני יכול לעזור רק עם חלקי פח לחיתוך וכיפוף.',session_expired:'צריך להתחבר מחדש ולנסות שוב.'}[c]||'משהו השתבש בחיבור. שלחו שוב.');
+    else bubble('bot',{images_unavailable:'לא הצלחתי לקרוא את התמונה. נסו לכתוב את המידות במילים.',image_rejected:'התמונה לא נקלטה. נסו JPG או PNG אחר.',image_too_large:'התמונה גדולה מדי. נסו לצלם שוב.',rate_limited:'יש עומס רגעי. נסו שוב בעוד דקה.',invalid_json:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות, למשל 20 על 30 ס״מ.',empty_completion:'לא הבנתי עד הסוף. נסו לנסח שוב עם מידות.',refused:'אני יכול לעזור רק עם חלקי פח לחיתוך וכיפוף.',session_expired:'צריך להתחבר מחדש ולנסות שוב.'}[c]||'משהו השתבש בחיבור. שלחו שוב.');
   }finally{ctl=null;$('send').disabled=false;$('stop').hidden=true;}
+}
+async function remoteDesign(text,img,signal){
+  const cat=await getCatalog();
+  const body={action:'design',text,current:JSON.stringify(currentDesign()),history:turns.slice(-10),
+    catalog:cat.map(f=>`${f.id}: ${f.sizes.map(z=>z.id).join(' ')}`).join(' | ')};
+  if(img){const im=await shrinkImage(img);body.image=im.data;body.mediaType=im.type;}
+  let res;
+  try{res=await fetch(ORDERS_ENDPOINT,{method:'POST',body:JSON.stringify(body),signal});}
+  catch(e){throw {code:e&&e.name==='AbortError'?'cancelled':'network'};}
+  const j=await res.json().catch(()=>null);
+  if(!j||!j.ok)throw {code:(j&&j.error)||'network'};
+  const r=j.result||{};
+  if(r.design&&Array.isArray(r.design.params)){const o={};r.design.params.forEach(p=>{if(p&&typeof p.k==='string')o[p.k]=p.v;});r.design.params=o;}
+  if(r.design&&r.design.template!=='profile')delete r.design.profile;
+  return r;
+}
+// longest edge ≤ 1568 px, JPEG: keeps the upload small and is the size Claude reads images at
+async function shrinkImage(file){
+  const bmp=await createImageBitmap(file),k=Math.min(1,1568/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0,c.width,c.height);
+  const url=c.toDataURL('image/jpeg',.85);return {data:url.slice(url.indexOf(',')+1),type:'image/jpeg'};
 }
 async function applyDesign(d,local){
   const num=v=>{const n=Number(v);return isFinite(n)&&n>0?n:null;};
