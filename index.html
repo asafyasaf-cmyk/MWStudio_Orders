@@ -169,6 +169,13 @@ input[aria-invalid="true"]{border-color:var(--warn);box-shadow:0 0 0 1px var(--w
 .profinfo .profspec{flex:1;min-width:0}
 .secsvg{flex:none;width:110px;height:110px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px}
 .secsvg path{fill:var(--muted);fill-rule:evenodd;stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke}
+.modetabs{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.modetabs button{display:inline-flex;align-items:center;gap:8px;font:700 15px var(--f-body);padding:9px 16px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.modetabs button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.modetabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.modetabs button:not([aria-selected="true"]):hover{color:var(--ink);background:var(--surface-2)}
+.modetabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:520px){.modetabs{width:100%}.modetabs button{flex:1;justify-content:center;padding:9px 6px;font-size:14px}}
 .facts bdi{unicode-bidi:isolate}
 .saved{font-weight:700;font-size:14px;color:var(--ok)}
 .saved.bad{color:var(--warn)}
@@ -215,7 +222,12 @@ h1{font-size:22px}
 </style>
 
 <div class="wrap" dir="rtl" lang="he">
-  <header class="top"><h1>חיתוך וכיפוף</h1></header>
+  <header class="top"><h1>MW Studio</h1>
+    <nav class="modetabs" role="tablist" aria-label="סוג הזמנה">
+      <button type="button" role="tab" id="tabSheet" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 L12 21 L21 17 L21 13 L12 17 L3 13 Z M3 13 L12 9 L21 13"/></svg>פח – חיתוך וכיפוף</button>
+      <button type="button" role="tab" id="tabProf" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3 H19 V6 H14 V18 H19 V21 H5 V18 H10 V6 H5 Z"/></svg>קטלוג פרופילים</button>
+    </nav>
+  </header>
 
   <div class="layout">
     <section class="stage" aria-label="תצוגת תלת-ממד">
@@ -1037,6 +1049,7 @@ $('gallery').innerHTML=PRESETS.map(p=>`<button type="button" class="tile" data-p
 $('gallery').addEventListener('click',e=>{const b=e.target.closest('.tile');if(!b)return;choosePreset(b.dataset.preset);});
 function markPreset(id){document.querySelectorAll('.tile').forEach(b=>b.setAttribute('aria-pressed',b.dataset.preset===id));}
 function choosePreset(id){
+  if(id!=='prof'&&id!=='dxf'&&typeof lastSheetPreset!=='undefined')lastSheetPreset=id;
   const pr=PRESETS.find(p=>p.id===id);S.preset=id;markPreset(id);
   if(id==='prof'){openProfile();return;}
   if(!pr.tpl){$('file').click();return;}
@@ -1065,7 +1078,7 @@ $('pgrid').addEventListener('input',e=>{
   S.params[k]=v;if(id[0]==='r')$('p_'+k).value=v;else{const r=$('r_'+k);if(+r.max<v)r.max=v;r.value=v;}
   syncShow();clearTimeout(rt);rt=setTimeout(()=>regen(false),id[0]==='r'?40:180);});
 $('pgrid').addEventListener('change',e=>{const k=e.target.id.slice(2);if(!TEMPLATES[S.tpl].fields.find(x=>x.k===k))return;S.params=cleanParams(S.tpl,S.params);$('p_'+k).value=S.params[k];$('r_'+k).value=S.params[k];regen(false);});
-function setMode(m){S.mode=m;$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('paramsProf').hidden=m!=='prof';$('dxfBox').hidden=m!=='tpl';$('thkWrap').hidden=m==='prof';
+function setMode(m){S.mode=m;$('tabSheet').setAttribute('aria-selected',m!=='prof');$('tabProf').setAttribute('aria-selected',m==='prof');$('paramsTpl').hidden=m!=='tpl';$('paramsDxf').hidden=m!=='dxf';$('paramsProf').hidden=m!=='prof';$('dxfBox').hidden=m!=='tpl';$('thkWrap').hidden=m==='prof';
   syncMats();if(m==='prof'){$('paramsTitle').textContent='פרופיל';cancelAnimationFrame(foldAnim);S.geom=null;}if(m==='dxf'){$('paramsTitle').textContent='כיפוף';S.bends=parseInt($('bends').value)||0;markPreset('dxf');regen(true);}}
 
 $('famChips').addEventListener('click',e=>{const b=e.target.closest('.fam');if(!b)return;const f=CATALOG.find(x=>x.id===b.dataset.fam);S.prof.fam=f.id;S.prof.size=f.def;syncMats();renderProfForm();regen(true);});
@@ -1074,6 +1087,10 @@ let plt;
 $('profLr').addEventListener('input',e=>{S.prof.L=+e.target.value;$('profL').value=S.prof.L;clearTimeout(plt);plt=setTimeout(()=>regen(false),40);});
 $('profL').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(!isFinite(v)||v<20)return;S.prof.L=Math.min(12000,v);const r=$('profLr');if(+r.max<v)r.max=v;r.value=v;clearTimeout(plt);plt=setTimeout(()=>regen(false),200);});
 $('profL').addEventListener('change',e=>{S.prof.L=Math.min(12000,Math.max(20,parseFloat(e.target.value)||1000));e.target.value=S.prof.L;const r=$('profLr');if(+r.max<S.prof.L)r.max=S.prof.L;r.value=S.prof.L;regen(false);});
+
+let lastSheetPreset='angle';
+$('tabProf').addEventListener('click',()=>{if(S.mode!=='prof')openProfile();});
+$('tabSheet').addEventListener('click',()=>{if(S.mode==='prof')choosePreset(lastSheetPreset);});
 
 /* ---------- tabs ---------- */
 function showTab(){}
